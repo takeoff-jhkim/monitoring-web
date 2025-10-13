@@ -1,6 +1,6 @@
-# Agent Management Frontend
+# Pluglink Web
 
-React 기반 에이전트 관리 웹 프론트엔드입니다. Docker를 사용하여 Node.js 설치 없이 개발 환경을 구성할 수 있습니다.
+React 기반 AI 에이전트 관리 웹 프론트엔드입니다. Docker를 사용하여 호스트 환경 오염 없이 개발할 수 있습니다.
 
 ## 주요 기능
 
@@ -23,15 +23,12 @@ React 기반 에이전트 관리 웹 프론트엔드입니다. Docker를 사용�
 - **WebSocket**: 실시간 통신
 - **Docker**: 개발 환경
 
-## 시작하기
+## 빠른 시작
 
-### 1. Docker Compose로 시작
+### 로컬 개발
 
 ```bash
-# 프론트엔드 디렉토리로 이동
-cd frontend
-
-# Docker Compose로 컨테이너 실행
+# 개발 서버 시작
 docker-compose up
 
 # 백그라운드 실행
@@ -40,59 +37,38 @@ docker-compose up -d
 
 웹 브라우저에서 `http://localhost:5173` 접속
 
-### 2. 환경 변수 설정 (선택사항)
+### 환경 변수
 
-기본적으로 백엔드가 `localhost:8080`에서 실행 중이라고 가정합니다. 다른 주소를 사용하려면 `docker-compose.yml` 파일에서 환경 변수를 수정하세요:
-
-```yaml
-environment:
-  - VITE_API_URL=http://your-backend-url:port
-  - VITE_WS_URL=ws://your-backend-url:port
-```
-
-### 3. 개발 명령어
+`.env.local` 파일을 생성하여 환경 변수를 설정하세요:
 
 ```bash
-# 컨테이너 중지
-docker-compose down
-
-# 컨테이너 재시작
-docker-compose restart
-
-# 로그 확인
-docker-compose logs -f
-
-# 컨테이너에 접속하여 명령어 실행
-docker-compose exec frontend sh
+VITE_API_URL=http://192.168.1.49:8080
+VITE_WS_URL=ws://192.168.1.49:8080
 ```
+
+## 📚 문서
+
+- **[개발 가이드](docs/DEVELOPMENT.md)** - Docker 기반 개발 환경, 워크플로우, CI/CD
 
 ## 프로젝트 구조
 
 ```
-frontend/
-├── src/
-│   ├── api/              # API 클라이언트
-│   │   ├── client.js     # Axios 설정
-│   │   ├── auth.js       # 인증 API
-│   │   └── agent.js      # 에이전트 API
-│   ├── components/       # 재사용 가능한 컴포넌트
-│   │   └── HitlInteraction.jsx
-│   ├── pages/            # 페이지 컴포넌트
-│   │   ├── Login.jsx
-│   │   ├── Signup.jsx
-│   │   ├── AgentList.jsx
-│   │   └── AgentDetail.jsx
-│   ├── store/            # 상태 관리
-│   │   └── authStore.js
-│   ├── utils/            # 유틸리티
-│   │   └── websocket.js
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── index.css
-├── Dockerfile.dev        # 개발용 Dockerfile
-├── docker-compose.yml    # Docker Compose 설정
-├── package.json
-└── vite.config.js
+pluglink-web/
+├── src/                  # 소스 코드
+│   ├── api/             # API 클라이언트
+│   ├── components/      # React 컴포넌트
+│   ├── pages/           # 페이지 컴포넌트
+│   ├── store/           # 상태 관리 (Zustand)
+│   └── utils/           # 유틸리티 함수
+├── docs/                # 문서
+│   └── DEVELOPMENT.md   # 개발 가이드
+├── public/              # 정적 파일
+├── Dockerfile           # 프로덕션 빌드용
+├── Dockerfile.dev       # 로컬 개발용
+├── docker-compose.yml   # 로컬 개발 환경
+├── nginx.conf          # Nginx 설정 (프로덕션)
+├── .gitlab-ci.yml      # CI/CD 파이프라인
+└── package.json
 ```
 
 ## API 엔드포인트
@@ -173,43 +149,23 @@ frontend/
 }
 ```
 
-## 개발 팁
+## 배포 환경
 
-### Hot Reload
-파일을 수정하면 자동으로 브라우저가 새로고침됩니다. Docker volume을 사용하여 호스트의 파일 변경사항이 컨테이너에 즉시 반영됩니다.
+- **Development**: https://pluglink-dev.take-off.kr
+- **Staging**: https://pluglink-stage.take-off.kr
+- **Production**: https://pluglink.take-off.kr
 
-### 디버깅
-브라우저의 개발자 도구(F12)를 사용하여 콘솔 로그와 네트워크 요청을 확인할 수 있습니다.
-
-### WebSocket 연결 확인
-```javascript
-// 브라우저 콘솔에서
-wsManager.isConnected()  // true/false 반환
-```
+자세한 배포 정보는 [개발 가이드](docs/DEVELOPMENT.md)를 참조하세요.
 
 ## 트러블슈팅
 
-### Docker 컨테이너가 시작되지 않는 경우
-```bash
-# 기존 컨테이너와 볼륨 제거
-docker-compose down -v
+상세한 트러블슈팅 가이드는 [개발 가이드](docs/DEVELOPMENT.md#트러블슈팅)를 참조하세요.
 
-# 이미지 재빌드
-docker-compose build --no-cache
+## 관련 프로젝트
 
-# 다시 시작
-docker-compose up
-```
-
-### WebSocket 연결 실패
-- 백엔드 서버가 실행 중인지 확인
-- `docker-compose.yml`의 `VITE_WS_URL`이 올바른지 확인
-- JWT 토큰이 유효한지 확인 (로그아웃 후 재로그인)
-
-### CORS 에러
-- 백엔드 Spring Boot의 CORS 설정 확인
-- `WebSocketConfig.java`의 `setAllowedOrigins` 확인
+- **GitOps Repository**: `gitlab.take-off.kr/infra/pluglink-web-gitops`
+- **Backend API**: `gitlab.take-off.kr/infra/plugin-agent`
 
 ## 라이센스
 
-이 프로젝트는 내부 POC 용도로 제작되었습니다.
+이 프로젝트는 내부 사용 목적으로 제작되었습니다.
