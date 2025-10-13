@@ -1,4 +1,6 @@
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080'
+import { ENV } from '../config/env'
+
+const WS_URL = ENV.WS_URL || 'ws://localhost:8080'
 
 class WebSocketManager {
   constructor() {
