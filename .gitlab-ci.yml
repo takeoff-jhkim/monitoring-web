@@ -17,7 +17,7 @@ mr-build-validation:
   image: node:18-alpine
   before_script:
     - echo "🔍 MR 빌드 검증 시작..."
-    - npm ci
+    - npm install
   script:
     - |
       echo "📦 Frontend 빌드 검증..."
