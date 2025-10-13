@@ -17,7 +17,6 @@ mr-build-validation:
   image: node:18-alpine
   before_script:
     - echo "🔍 MR 빌드 검증 시작..."
-    - cd frontend
     - npm ci
   script:
     - |
@@ -39,7 +38,7 @@ mr-build-validation:
   cache:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
-      - frontend/node_modules/
+      - node_modules/
 
 # 변경사항 감지
 detect-changes:
@@ -53,8 +52,8 @@ detect-changes:
         # 첫 커밋인 경우 모든 것이 변경된 것으로 간주
         echo "FRONTEND_CHANGED=true" >> changes.env
       else
-        # Frontend 변경사항 체크
-        if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -E '^frontend/'; then
+        # 모든 변경사항을 체크 (프로젝트 루트가 frontend)
+        if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -v '^\.gitlab-ci\.yml$'; then
           echo "FRONTEND_CHANGED=true" >> changes.env
         else
           echo "FRONTEND_CHANGED=false" >> changes.env
@@ -126,7 +125,7 @@ build-frontend:
         FULL_IMAGE_NAME="${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
         # Docker 이미지 빌드
-        docker build --network=host -f frontend/Dockerfile -t $FULL_IMAGE_NAME ./frontend
+        docker build --network=host -f Dockerfile -t $FULL_IMAGE_NAME .
 
         # 이미지 푸시
         docker push $FULL_IMAGE_NAME
