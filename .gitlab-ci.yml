@@ -1,0 +1,258 @@
+stages:
+  - validate
+  - detect-changes
+  - build
+  - deploy-gitops
+
+variables:
+  # Docker 이미지 정보
+  IMAGE_NAME: "pluglink-web"
+
+  # GitOps Repository
+  GITOPS_REPO: "https://pluglink-web-deploy:${GITOPS_ACCESS_TOKEN}@gitlab.take-off.kr/infra/pluglink-web-gitops.git"
+
+# MR 빌드 검증 (Merge Request에서만 실행)
+mr-build-validation:
+  stage: validate
+  image: node:18-alpine
+  before_script:
+    - echo "🔍 MR 빌드 검증 시작..."
+    - cd frontend
+    - npm ci
+  script:
+    - |
+      echo "📦 Frontend 빌드 검증..."
+
+      # 린팅 검증
+      npm run lint
+
+      # 빌드 테스트
+      npm run build
+
+      echo "✅ 빌드 검증 성공"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+  tags:
+    - k8s
+  allow_failure: false
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - frontend/node_modules/
+
+# 변경사항 감지
+detect-changes:
+  stage: detect-changes
+  image: alpine/git:latest
+  script:
+    - apk add --no-cache jq
+    - |
+      # 이전 커밋과 비교하여 변경사항 감지
+      if [ "$CI_COMMIT_BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+        # 첫 커밋인 경우 모든 것이 변경된 것으로 간주
+        echo "FRONTEND_CHANGED=true" >> changes.env
+      else
+        # Frontend 변경사항 체크
+        if git diff --name-only $CI_COMMIT_BEFORE_SHA $CI_COMMIT_SHA | grep -E '^frontend/'; then
+          echo "FRONTEND_CHANGED=true" >> changes.env
+        else
+          echo "FRONTEND_CHANGED=false" >> changes.env
+        fi
+      fi
+    - cat changes.env
+  artifacts:
+    reports:
+      dotenv: changes.env
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: '$CI_COMMIT_REF_NAME == "dev" || $CI_COMMIT_REF_NAME == "stage"'
+      when: always
+    - if: '$CI_COMMIT_REF_NAME == "main" && $CI_COMMIT_TAG'
+      when: always
+  tags:
+    - k8s
+
+# Frontend 빌드 및 푸시
+build-frontend:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - name: docker:20.10.24-dind
+      alias: dockerd
+      command:
+        [
+          "dockerd",
+          "--host=0.0.0.0:2375",
+          "--tls=false"
+        ]
+  variables:
+    DOCKER_HOST: tcp://dockerd:2375
+    DOCKER_TLS_CERTDIR: ""
+    NEXUS_REGISTRY: $NEXUS_REGISTRY_CI_DEV
+    NEXUS_USERNAME: $NEXUS_USER_CI_DEV
+    NEXUS_PASSWORD: $NEXUS_PW_CI_DEV
+  before_script:
+    - echo "$FRONTEND_CHANGED"
+    - |
+      # 환경별 레지스트리 및 인증 정보 설정
+      if [ "$CI_COMMIT_REF_NAME" = "dev" ]; then
+        export NEXUS_REGISTRY="$NEXUS_REGISTRY_CI_DEV"
+        export NEXUS_USERNAME="$NEXUS_USER_CI_DEV"
+        export NEXUS_PASSWORD="$NEXUS_PW_CI_DEV"
+        export ENV_SUFFIX="dev"
+      elif [ "$CI_COMMIT_REF_NAME" = "stage" ]; then
+        export NEXUS_REGISTRY="$NEXUS_REGISTRY_CI_STAGE"
+        export NEXUS_USERNAME="$NEXUS_USER_CI_STAGE"
+        export NEXUS_PASSWORD="$NEXUS_PW_CI_STAGE"
+        export ENV_SUFFIX="stage"
+      elif [ "$CI_COMMIT_REF_NAME" = "main" ] && [ -n "$CI_COMMIT_TAG" ]; then
+        export NEXUS_REGISTRY="$NEXUS_REGISTRY_CI_PROD"
+        export NEXUS_USERNAME="$NEXUS_USER_CI_PROD"
+        export NEXUS_PASSWORD="$NEXUS_PW_CI_PROD"
+        export ENV_SUFFIX="prod"
+      fi
+    - echo $NEXUS_PASSWORD | docker login $NEXUS_REGISTRY -u $NEXUS_USERNAME --password-stdin
+  script:
+    - |
+      if [ "$FRONTEND_CHANGED" = "true" ]; then
+        # 이미지 태그 생성 (main에서는 태그명 포함)
+        if [ "$CI_COMMIT_REF_NAME" = "main" ] && [ -n "$CI_COMMIT_TAG" ]; then
+          IMAGE_TAG="${CI_COMMIT_TAG}-$(date +%Y%m%d)-${CI_COMMIT_SHORT_SHA}"
+        else
+          IMAGE_TAG="${CI_COMMIT_REF_NAME}-$(date +%Y%m%d)-${CI_COMMIT_SHORT_SHA}"
+        fi
+        FULL_IMAGE_NAME="${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+        # Docker 이미지 빌드
+        docker build --network=host -f frontend/Dockerfile -t $FULL_IMAGE_NAME ./frontend
+
+        # 이미지 푸시
+        docker push $FULL_IMAGE_NAME
+
+        # 태그 정보를 아티팩트로 저장
+        echo "FRONTEND_IMAGE_TAG=${IMAGE_TAG}" >> frontend_image.env
+        echo "FRONTEND_FULL_IMAGE=${FULL_IMAGE_NAME}" >> frontend_image.env
+
+        echo "Frontend image built and pushed: $FULL_IMAGE_NAME"
+      else
+        echo "No frontend changes detected, skipping build"
+        echo "FRONTEND_IMAGE_TAG=no-change" >> frontend_image.env
+      fi
+  artifacts:
+    reports:
+      dotenv: frontend_image.env
+    expire_in: 1 hour
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: '$CI_COMMIT_REF_NAME == "dev" || $CI_COMMIT_REF_NAME == "stage"'
+      when: always
+    - if: '$CI_COMMIT_REF_NAME == "main" && $CI_COMMIT_TAG'
+      when: always
+  needs:
+    - detect-changes
+  tags:
+    - k8s
+
+# GitOps 업데이트
+update-gitops:
+  stage: deploy-gitops
+  image: alpine/git:latest
+  before_script:
+    - apk add --no-cache curl jq yq
+    - git config --global user.email "gitlab-ci@take-off.kr"
+    - git config --global user.name "GitLab CI"
+  script:
+    - |
+      # 환경변수 디버그 정보 출력
+      echo "=== Environment Variables Debug ==="
+      echo "FRONTEND_CHANGED: '$FRONTEND_CHANGED'"
+      echo "FRONTEND_IMAGE_TAG: '$FRONTEND_IMAGE_TAG'"
+      echo "CI_COMMIT_REF_NAME: '$CI_COMMIT_REF_NAME'"
+
+      # 환경변수가 비어있으면 기본값 설정
+      if [ -z "$FRONTEND_CHANGED" ]; then
+        echo "FRONTEND_CHANGED is empty, defaulting to true"
+        FRONTEND_CHANGED="true"
+      fi
+
+      # GitOps 레포지토리 클론
+      git clone ${GITOPS_REPO}
+      cd pluglink-web-gitops
+
+      # 환경별 디렉토리 설정
+      if [ "$CI_COMMIT_REF_NAME" = "dev" ]; then
+        ENV_DIR="environments/dev"
+      elif [ "$CI_COMMIT_REF_NAME" = "stage" ]; then
+        ENV_DIR="environments/stage"
+      elif [ "$CI_COMMIT_REF_NAME" = "main" ] && [ -n "$CI_COMMIT_TAG" ]; then
+        ENV_DIR="environments/prod"
+      fi
+
+      echo "ENV_DIR: $ENV_DIR"
+
+      # Frontend 이미지 태그 업데이트 (Kustomize 방식)
+      if [ "$FRONTEND_CHANGED" = "true" ] && [ "$FRONTEND_IMAGE_TAG" != "no-change" ]; then
+        echo "=== Frontend Image Update ==="
+        echo "FRONTEND_IMAGE_TAG: $FRONTEND_IMAGE_TAG"
+        echo "FRONTEND_FULL_IMAGE: $FRONTEND_FULL_IMAGE"
+        echo "Target file: $ENV_DIR/kustomization.yaml"
+
+        # 파일 존재 확인
+        if [ ! -f "$ENV_DIR/kustomization.yaml" ]; then
+          echo "ERROR: kustomization.yaml not found at $ENV_DIR/"
+          ls -la $ENV_DIR/
+          exit 1
+        fi
+
+        # 현재 파일 내용 확인
+        echo "Before update:"
+        cat $ENV_DIR/kustomization.yaml
+
+        # kustomization.yaml에서 이미지 태그만 업데이트 (newName은 그대로 유지)
+        yq eval ".images[0].newTag = \"$FRONTEND_IMAGE_TAG\"" -i $ENV_DIR/kustomization.yaml
+        if [ $? -eq 0 ]; then
+          echo "✅ newTag updated successfully"
+        else
+          echo "❌ newTag update failed"
+          exit 1
+        fi
+
+        # 업데이트 후 파일 내용 확인
+        echo "After update:"
+        cat $ENV_DIR/kustomization.yaml
+
+        git add $ENV_DIR/kustomization.yaml
+        echo "Frontend kustomization.yaml staged for commit"
+      else
+        echo "Skipping frontend update: FRONTEND_CHANGED=$FRONTEND_CHANGED, FRONTEND_IMAGE_TAG=$FRONTEND_IMAGE_TAG"
+      fi
+
+      # 변경사항이 있으면 커밋하고 푸시
+      if ! git diff --cached --quiet; then
+        git commit -m "Update pluglink-web image tag for $CI_COMMIT_REF_NAME
+
+        Image Tag: $FRONTEND_IMAGE_TAG
+        Source Commit: $CI_COMMIT_SHA"
+
+        git push origin main
+        echo "GitOps repository updated successfully"
+      else
+        echo "No changes to commit"
+      fi
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: '$CI_COMMIT_REF_NAME == "dev" || $CI_COMMIT_REF_NAME == "stage"'
+      when: always
+    - if: '$CI_COMMIT_REF_NAME == "main" && $CI_COMMIT_TAG'
+      when: always
+  needs:
+    - job: detect-changes
+      artifacts: true
+    - job: build-frontend
+      artifacts: true
+  tags:
+    - k8s
