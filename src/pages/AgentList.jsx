@@ -135,7 +135,7 @@ function AgentList() {
                   onClick={() => navigate(`/agent/${session.agentId}`)}
                 >
                   <div className="session-header">
-                    <h3>{session.agentId}</h3>
+                    <h3>{session.agentName || session.agentId}</h3>
                     <div className="badges">
                       <span
                         className="status-badge"
@@ -162,6 +162,11 @@ function AgentList() {
                     </div>
                   </div>
                   <div className="session-info">
+                    {session.agentName && (
+                      <p className="agent-id" style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.3rem' }}>
+                        ID: {session.agentId}
+                      </p>
+                    )}
                     <p className="system-name">{session.agentSystemName || 'Plugin Agent'}</p>
                     <p className="timestamp">
                       생성: {new Date(session.createdAt).toLocaleString('ko-KR')}
