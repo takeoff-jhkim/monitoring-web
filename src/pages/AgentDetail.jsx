@@ -55,11 +55,6 @@ function AgentDetail() {
     const handleHitlRequest = (message) => {
       if (message.agent_id === agentId) {
         setHitlRequest(message.data)
-        addMessage({
-          type: 'system',
-          content: 'HITL 입력이 필요합니다',
-          timestamp: new Date().toISOString(),
-        })
       }
     }
 
@@ -234,7 +229,12 @@ function AgentDetail() {
           ← 목록으로
         </button>
         <div className="header-info">
-          <h1>{agentId}</h1>
+          <h1>{session.agentName || agentId}</h1>
+          {session.agentName && (
+            <span style={{ fontSize: '0.9rem', color: '#666', marginLeft: '0.5rem' }}>
+              ({agentId})
+            </span>
+          )}
           <span
             className="status-badge"
             style={{ backgroundColor: getStatusColor(session.status) }}
