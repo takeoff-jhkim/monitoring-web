@@ -93,6 +93,13 @@ class WebSocketManager {
     })
   }
 
+  unsubscribeFromAgent(agentId) {
+    this.send({
+      type: 'unsubscribe_agent',
+      agent_id: agentId,
+    })
+  }
+
   sendHitlResponse(requestId, responseType, responseData) {
     this.send({
       type: 'hitl_response',

@@ -42,8 +42,8 @@ function HitlInteraction({ request, onResponse }) {
   }
 
   const renderInput = () => {
-    // Determine input type from request.type or options
-    const inputType = request.type || (request.options ? 'selection' : 'input')
+    // Determine input type based on request.type
+    const inputType = request.type
 
     switch (inputType) {
       case 'approval':
@@ -53,23 +53,24 @@ function HitlInteraction({ request, onResponse }) {
             <button
               type="button"
               className="approve-btn yes-btn"
-              onClick={() => handleSubmit('yes')}
+              onClick={() => handleSubmit('예')}
               disabled={loading}
             >
-              Yes
+              예
             </button>
             <button
               type="button"
               className="reject-btn no-btn"
-              onClick={() => handleSubmit('no')}
+              onClick={() => handleSubmit('아니오')}
               disabled={loading}
             >
-              No
+              아니오
             </button>
           </div>
         )
 
       case 'selection':
+      case 'options':
         return (
           <div className="selection-options">
             {request.options?.map((option, index) => (
@@ -119,9 +120,6 @@ function HitlInteraction({ request, onResponse }) {
     <div className="hitl-interaction">
       <div className="hitl-prompt">{request.prompt || '입력이 필요합니다.'}</div>
       {renderInput()}
-      {request.timeout && (
-        <div className="hitl-timeout">⏱ 제한 시간: {request.timeout}초</div>
-      )}
     </div>
   )
 }

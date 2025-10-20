@@ -102,20 +102,25 @@
 
 /* Text Input */
 .input-form {
-  display: flex;
-  gap: 10px;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px;
+  align-items: stretch;
+  width: 100%;
 }
 
 .text-input {
-  flex: 1;
-  padding: 14px 16px;
+  flex: 1 1 auto;
+  padding: 10px 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 10px;
-  font-size: 15px;
+  font-size: 14px;
   background: rgba(255, 255, 255, 0.15);
   color: white;
   backdrop-filter: blur(10px);
   transition: all 0.3s;
+  min-width: 0;
+  max-width: none;
 }
 
 .text-input::placeholder {
@@ -134,16 +139,18 @@
 }
 
 .submit-btn {
-  padding: 14px 28px;
+  flex: 0 0 auto;
+  padding: 10px 14px;
   background: white;
   color: #667eea;
   border: none;
   border-radius: 10px;
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.3s;
   white-space: nowrap;
+  max-width: 80px;
 }
 
 .submit-btn:hover:not(:disabled) {

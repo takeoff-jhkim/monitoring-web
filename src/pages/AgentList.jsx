@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { agentApi } from '../api/agent'
+import { wsManager } from '../utils/websocket'
+import Toast from '../components/Toast'
 import './AgentList.css'
 
 function AgentList() {
@@ -10,17 +12,55 @@ function AgentList() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [command, setCommand] = useState('')
   const [creating, setCreating] = useState(false)
+  const [toast, setToast] = useState(null)
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
+  const { logout, token } = useAuthStore()
 
   useEffect(() => {
     loadSessions()
+
+    // Connect WebSocket when entering AgentList
+    if (token) {
+      wsManager.connect(token)
+    }
+
+    // Listen for agent_status messages
+    const handleAgentStatus = (message) => {
+      if (message.type === 'agent_status') {
+        setSessions((prevSessions) =>
+          prevSessions.map((session) =>
+            session.agentId === message.agent_id
+              ? {
+                  ...session,
+                  status: message.agent_status,
+                  ...(message.agent_name && { agentName: message.agent_name }),
+                  ...(message.timestamp && { updatedAt: message.timestamp }),
+                }
+              : session
+          )
+        )
+      }
+    }
+
+    wsManager.on('agent_status', handleAgentStatus)
+
+    return () => {
+      // Cleanup: remove event listener but don't disconnect
+      // WebSocket will be managed by AgentDetail when navigating
+      wsManager.off('agent_status', handleAgentStatus)
+    }
   }, [])
 
   const loadSessions = async () => {
     try {
       const data = await agentApi.listAgentSessions()
-      setSessions(data.sessions || [])
+      // Sort by creation date in ascending order (oldest first, newest last)
+      const sortedSessions = (data.sessions || []).sort((a, b) => {
+        const dateA = new Date(a.createdAt)
+        const dateB = new Date(b.createdAt)
+        return dateA - dateB
+      })
+      setSessions(sortedSessions)
     } catch (error) {
       console.error('Failed to load sessions:', error)
     } finally {
@@ -102,6 +142,35 @@ function AgentList() {
     }
   }
 
+  const formatKoreanDateTime = (dateString) => {
+    if (!dateString) return '-'
+    // Add 'Z' to indicate UTC if not present
+    const utcDateString = dateString.endsWith('Z') ? dateString : dateString + 'Z'
+    const date = new Date(utcDateString)
+    return date.toLocaleString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  }
+
+  const handleCopyAgentId = (e, agentId) => {
+    e.stopPropagation() // Prevent navigating to detail page
+    navigator.clipboard.writeText(agentId)
+      .then(() => {
+        setToast({ message: 'Agent ID가 클립보드에 복사되었습니다!', type: 'success' })
+      })
+      .catch((err) => {
+        console.error('Failed to copy agent ID:', err)
+        setToast({ message: '복사에 실패했습니다.', type: 'error' })
+      })
+  }
+
   return (
     <div className="agent-list-container">
       <header className="header">
@@ -163,17 +232,28 @@ function AgentList() {
                   </div>
                   <div className="session-info">
                     {session.agentName && (
-                      <p className="agent-id" style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.3rem' }}>
+                      <p
+                        className="agent-id"
+                        style={{
+                          fontSize: '0.8rem',
+                          color: '#666',
+                          marginBottom: '0.3rem',
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
+                        onClick={(e) => handleCopyAgentId(e, session.agentId)}
+                        title="클릭하여 복사"
+                      >
                         ID: {session.agentId}
                       </p>
                     )}
                     <p className="system-name">{session.agentSystemName || 'Plugin Agent'}</p>
                     <p className="timestamp">
-                      생성: {new Date(session.createdAt).toLocaleString('ko-KR')}
+                      생성: {formatKoreanDateTime(session.createdAt)}
                     </p>
                     {session.updatedAt && (
                       <p className="timestamp">
-                        업데이트: {new Date(session.updatedAt).toLocaleString('ko-KR')}
+                        업데이트: {formatKoreanDateTime(session.updatedAt)}
                       </p>
                     )}
                     {session.syncStatus === 'OUT_OF_SYNC' && (
@@ -217,6 +297,14 @@ function AgentList() {
             </div>
           </div>
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   )
