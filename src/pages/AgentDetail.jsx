@@ -2,14 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { agentApi } from '../api/agent'
 import { wsManager } from '../utils/websocket'
-import { useAuthStore } from '../store/authStore'
 import HitlInteraction from '../components/HitlInteraction'
 import './AgentDetail.css'
 
 function AgentDetail() {
   const { agentId } = useParams()
   const navigate = useNavigate()
-  const token = useAuthStore((state) => state.token)
   const [session, setSession] = useState(null)
   const [detail, setDetail] = useState(null)
   const [messages, setMessages] = useState([])
@@ -20,24 +18,26 @@ function AgentDetail() {
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
-    // Connect WebSocket when entering agent detail page
-    if (token) {
-      wsManager.connect(token)
-    }
-
     loadSession()
+
+    // Subscribe to this specific agent
     subscribeToAgent()
 
     // Listen for WebSocket events
+    const handleAgentStatus = (message) => {
+      if (message.type === 'agent_status' && message.agent_id === agentId) {
+        setSession((prev) => ({
+          ...prev,
+          status: message.agent_status,
+          ...(message.agent_name && { agentName: message.agent_name }),
+        }))
+      }
+    }
+
     const handleAgentUpdate = (message) => {
       if (message.agent_id === agentId) {
         if (message.type === 'agent_status_update') {
           setSession((prev) => ({ ...prev, status: message.status }))
-          addMessage({
-            type: 'system',
-            content: `상태 변경: ${getStatusText(message.status)}`,
-            timestamp: new Date().toISOString(),
-          })
         }
       }
     }
@@ -55,6 +55,14 @@ function AgentDetail() {
     const handleHitlRequest = (message) => {
       if (message.agent_id === agentId) {
         setHitlRequest(message.data)
+        // Add HITL prompt to message list
+        if (message.data?.prompt) {
+          addMessage({
+            type: 'agent',
+            content: message.data.prompt,
+            timestamp: new Date().toISOString(),
+          })
+        }
       }
     }
 
@@ -68,20 +76,22 @@ function AgentDetail() {
       }
     }
 
+    wsManager.on('agent_status', handleAgentStatus)
     wsManager.on('agent_status_update', handleAgentUpdate)
     wsManager.on('agent_message', handleAgentMessage)
     wsManager.on('hitl_request', handleHitlRequest)
     wsManager.on('agent_response', handleAgentResponse)
 
     return () => {
+      // Unsubscribe from this specific agent
+      wsManager.unsubscribeFromAgent(agentId)
+
       // Cleanup: remove event listeners
+      wsManager.off('agent_status', handleAgentStatus)
       wsManager.off('agent_status_update', handleAgentUpdate)
       wsManager.off('agent_message', handleAgentMessage)
       wsManager.off('hitl_request', handleHitlRequest)
       wsManager.off('agent_response', handleAgentResponse)
-
-      // Disconnect WebSocket when leaving agent detail page
-      wsManager.disconnect()
     }
   }, [agentId])
 
@@ -206,6 +216,23 @@ function AgentDetail() {
     }
   }
 
+  const formatKoreanDateTime = (dateString) => {
+    if (!dateString) return '-'
+    // Add 'Z' to indicate UTC if not present
+    const utcDateString = dateString.endsWith('Z') ? dateString : dateString + 'Z'
+    const date = new Date(utcDateString)
+    return date.toLocaleString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  }
+
   if (loading) {
     return (
       <div className="agent-detail-container">
@@ -252,18 +279,18 @@ function AgentDetail() {
           </div>
           <div className="info-item">
             <label>생성 시간</label>
-            <span>{session.createdAt ? new Date(session.createdAt).toLocaleString('ko-KR') : '-'}</span>
+            <span>{formatKoreanDateTime(session.createdAt)}</span>
           </div>
           {session.updatedAt && (
             <div className="info-item">
               <label>최종 업데이트</label>
-              <span>{new Date(session.updatedAt).toLocaleString('ko-KR')}</span>
+              <span>{formatKoreanDateTime(session.updatedAt)}</span>
             </div>
           )}
           {detail?.created_at && (
             <div className="info-item">
               <label>Plugin-Agent 생성 시간</label>
-              <span>{new Date(detail.created_at).toLocaleString('ko-KR')}</span>
+              <span>{formatKoreanDateTime(detail.created_at)}</span>
             </div>
           )}
         </div>
@@ -275,17 +302,8 @@ function AgentDetail() {
             ) : (
               messages.map((msg, index) => (
                 <div key={index} className={`message message-${msg.type}`}>
-                  <div className="message-header">
-                    <span className="message-type">
-                      {msg.type === 'agent'
-                        ? 'Agent'
-                        : msg.type === 'user'
-                        ? 'You'
-                        : 'System'}
-                    </span>
-                    <span className="message-time">
-                      {new Date(msg.timestamp).toLocaleTimeString('ko-KR')}
-                    </span>
+                  <div className="message-sender">
+                    {msg.type === 'agent' ? 'Agent' : msg.type === 'user' ? 'You' : 'System'}
                   </div>
                   <div className="message-content">{msg.content}</div>
                 </div>
