@@ -5,25 +5,21 @@ import EventLog from "../components/monitoring/EventLog";
 import StatusPanel from "../components/monitoring/StatusPanel";
 import { SYSTEM_BY_KEY } from "../config/systems";
 import {
-  createInitialSystemState,
+  selectLatestSnapshot,
   useMonitoringStore,
-} from "../store/monitoringStore";
+} from "../store/useMonitoringStore";
 
 const statusDescriptions = {
-  healthy: "트래픽과 리소스 모두 안정적인 상태",
-  stable: "경미한 지연이 있으나 허용 범위",
-  degraded: "사용자 경험 저하, 미션 크리티컬 아님",
-  incident: "즉시 대응이 필요한 장애 상태",
-  initializing: "초기화 중",
+  ready: "정상적으로 연결되어 있습니다.",
+  off: "연결이 해제된 상태입니다.",
+  init: "초기화 중입니다.",
+  rag_building: "RAG 자원을 준비 중입니다.",
 };
 
 const agentDescriptions = {
   idle: "대기 중 - 신규 작업 가능",
-  planning: "플레이북을 구성 중",
-  executing: "실행 파이프라인 동작 중",
-  awaiting_input: "사용자 HITL 응답 대기",
-  suspended: "관리자에 의해 일시 중단",
-  error: "예외 발생 - 재시작 필요",
+  running: "작업을 실행 중입니다.",
+  done: "마지막 작업을 완료했습니다.",
 };
 
 const chartConfig = [
@@ -34,27 +30,36 @@ const chartConfig = [
 
 export default function SystemDetailPage() {
   const { apiKey } = useParams();
-  const bucket = useMonitoringStore((state) =>
-    apiKey ? state.systems[apiKey] : undefined,
+  const snapshot = useMonitoringStore((state) =>
+    apiKey ? selectLatestSnapshot(apiKey)(state) : undefined,
   );
 
   const metaFromConfig = apiKey ? SYSTEM_BY_KEY[apiKey] : undefined;
-  const snapshot =
-    bucket ??
-    createInitialSystemState({
-      apiKey,
-      ...metaFromConfig,
-    });
-  const meta = { ...metaFromConfig, ...snapshot.meta };
+  const meta = { ...metaFromConfig, ...(snapshot?.meta ?? {}) };
 
-  const statuses = snapshot.statuses;
-  const metrics = snapshot.metrics;
-  const llmUsage = snapshot.llmUsage;
-  const events = snapshot.events;
-
-  const heartbeatAge = statuses.heartbeatTs
-    ? Math.max(0, Math.round((Date.now() - statuses.heartbeatTs) / 1000))
+  const metrics = snapshot?.metrics ?? { cpu: [], memory: [], storage: [] };
+  const events = snapshot?.events ?? [];
+  const systemStatus = snapshot?.status?.status ?? "init";
+  const systemDescription =
+    statusDescriptions[systemStatus] ?? "상태 정보 없음";
+  const latestAgent = snapshot?.agents?.[0];
+  const agentStatus = latestAgent?.status ?? "idle";
+  const agentDescription =
+    agentDescriptions[agentStatus] ?? "에이전트 상태 정보 없음";
+  const heartbeatAge = snapshot?.lastHeartbeatTs
+    ? Math.max(0, Math.round((Date.now() - snapshot.lastHeartbeatTs) / 1000))
     : null;
+  const llmUsage = snapshot?.llm ?? {
+    mode: "--",
+    provider: "--",
+    model_name: "--",
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    requestsPerMin: 0,
+    tokensPerMin: 0,
+    costUsd: 0,
+  };
 
   return (
     <div className="monitoring-page">
@@ -96,13 +101,13 @@ export default function SystemDetailPage() {
       <section className="status-grid">
         <StatusPanel
           title="System Status"
-          value={statuses.system}
-          description={statusDescriptions[statuses.system]}
+          value={systemStatus}
+          description={systemDescription}
         />
         <StatusPanel
           title="Agent Status"
-          value={statuses.agent}
-          description={agentDescriptions[statuses.agent]}
+          value={agentStatus}
+          description={agentDescription}
         />
         <div className="card status-card">
           <div className="status-title">LLM Load</div>
@@ -112,7 +117,7 @@ export default function SystemDetailPage() {
               : "--"}
           </div>
           <p className="status-desc">
-            분당 요청 {llmUsage.tokensPerMin.toLocaleString()} tokens
+            모드 {llmUsage.mode ?? "--"} · 모델 {llmUsage.model_name ?? "--"}
           </p>
         </div>
       </section>
