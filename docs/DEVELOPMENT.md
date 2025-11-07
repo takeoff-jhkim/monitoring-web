@@ -127,16 +127,19 @@ pluglink-web/
 ## 배포 환경
 
 ### Development (dev)
+
 - **URL**: https://pluglink-dev.take-off.kr
 - **API**: https://api-dev.take-off.kr
 - **자동 배포**: `dev` 브랜치 푸시 시
 
 ### Staging (stage)
+
 - **URL**: https://pluglink-stage.take-off.kr
 - **API**: https://api-stage.take-off.kr
 - **자동 배포**: `stage` 브랜치 푸시 시
 
 ### Production (prod)
+
 - **URL**: https://pluglink.take-off.kr
 - **API**: https://api.take-off.kr
 - **자동 배포**: `main` 브랜치 태그 푸시 시
@@ -186,7 +189,7 @@ docker system prune -a
 ```yaml
 # docker-compose.yml 수정
 ports:
-  - "3000:5173"  # 또는 다른 포트
+  - "3000:5173" # 또는 다른 포트
 ```
 
 ### node_modules 권한 문제
@@ -199,6 +202,7 @@ Docker 컨테이너 내부에서만 node_modules가 관리됩니다.
 ### 새 기능 개발
 
 1. 로컬에서 개발 서버 실행
+
    ```bash
    docker-compose up
    ```
@@ -206,11 +210,13 @@ Docker 컨테이너 내부에서만 node_modules가 관리됩니다.
 2. 코드 수정 (HMR 자동 반영)
 
 3. 빌드 테스트
+
    ```bash
    docker-compose run --rm frontend npm run build
    ```
 
 4. 커밋 및 푸시
+
    ```bash
    git add .
    git commit -m "feat: add new feature"
@@ -218,6 +224,7 @@ Docker 컨테이너 내부에서만 node_modules가 관리됩니다.
    ```
 
 5. Merge Request 생성
+
    - 자동으로 빌드 검증 실행
 
 6. MR 승인 및 머지
@@ -226,6 +233,7 @@ Docker 컨테이너 내부에서만 node_modules가 관리됩니다.
 ### 프로덕션 배포
 
 1. Stage 환경에서 테스트
+
    ```bash
    git checkout stage
    git merge dev

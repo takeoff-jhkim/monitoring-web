@@ -23,6 +23,12 @@ React 기반 AI 에이전트 관리 웹 프론트엔드입니다. Docker를 사�
 - **WebSocket**: 실시간 통신
 - **Docker**: 개발 환경
 
+## Monitoring Demo (Mock)
+
+- `/systems` 페이지가 Redis heartbeat/status/agent_status/llm_usage/system_event 채널을 모사하는 **mock publisher**를 구동합니다.
+- Mock 데이터는 Zustand 스토어에 적재되고 Recharts 기반 CPU/메모리/스토리지 실시간 차트, 상태/LLM Usage 패널, 이벤트 로그로 시각화됩니다.
+- 실행 전 `npm install`로 새로 추가된 `recharts` 의존성을 설치한 뒤 `npm run dev`로 데모를 확인하세요.
+
 ## 빠른 시작
 
 ### 로컬 개발

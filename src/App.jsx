@@ -1,24 +1,17 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from './store/authStore'
-import Login from './pages/Login'
-import Signup from './pages/Signup'
-import AgentList from './pages/AgentList'
-import AgentDetail from './pages/AgentDetail'
-
-function PrivateRoute({ children }) {
-  const { token } = useAuthStore()
-  return token ? children : <Navigate to="/login" />
-}
+import { Routes, Route, Navigate } from "react-router-dom";
+import SystemsPage from "./pages/SystemsPage";
 
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/" element={<PrivateRoute><AgentList /></PrivateRoute>} />
-      <Route path="/agent/:agentId" element={<PrivateRoute><AgentDetail /></PrivateRoute>} />
+      {/* 기본 진입은 /systems 로 */}
+      <Route path="/" element={<Navigate to="/systems" replace />} />
+      {/* 시스템 목록 페이지 */}
+      <Route path="/systems" element={<SystemsPage />} />
+      {/* 없는 경로 처리 */}
+      <Route path="*" element={<Navigate to="/systems" replace />} />
     </Routes>
-  )
+  );
 }
 
-export default App
+export default App;
