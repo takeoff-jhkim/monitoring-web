@@ -3,11 +3,17 @@ export const statusPalette = {
   stable: "#0f766e",
   degraded: "#d97706",
   incident: "#dc2626",
+  ready: "#16a34a",
+  off: "#ef4444",
+  init: "#6366f1",
+  rag_building: "#d97706",
   error: "#dc2626",
+  running: "#2563eb",
+  done: "#0f766e",
+  idle: "#475467",
   executing: "#2563eb",
   planning: "#7c3aed",
   awaiting_input: "#f97316",
-  idle: "#475467",
   suspended: "#6b7280",
 };
 

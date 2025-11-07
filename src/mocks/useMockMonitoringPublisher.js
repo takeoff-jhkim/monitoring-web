@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import { startMockRedisPublisher } from "./mockPublisher";
+import { SYSTEM_DEFINITIONS } from "../config/systems";
+import { startMockForAll, stopAllMocks } from "../utils/mockPublisher";
 
-export function useMockMonitoringPublisher(systems) {
+export function useMockMonitoringPublisher(systems = SYSTEM_DEFINITIONS) {
   useEffect(() => {
-    const stop = startMockRedisPublisher(systems);
+    startMockForAll(systems);
     return () => {
-      stop && stop();
+      stopAllMocks();
     };
   }, [systems]);
 }
