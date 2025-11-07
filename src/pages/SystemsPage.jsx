@@ -1,102 +1,147 @@
-import MetricChart from "../components/common/MetricChart";
-import StatusPanel from "../components/monitoring/StatusPanel";
-import LLMUsagePanel from "../components/monitoring/LLMUsagePanel";
-import EventLog from "../components/monitoring/EventLog";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import SparkBar from "../components/common/SparkBar";
+import {
+  formatStatusLabel,
+  statusPalette,
+} from "../components/monitoring/StatusPanel";
+import { SYSTEM_DEFINITIONS } from "../config/systems";
 import { useMonitoringStore } from "../store/monitoringStore";
-import { useMockMonitoringPublisher } from "../mocks/useMockMonitoringPublisher";
 
-const statusDescriptions = {
-  healthy: "트래픽과 리소스 모두 안정적인 상태",
-  stable: "경미한 지연이 있으나 허용 범위",
-  degraded: "사용자 경험 저하, 미션 크리티컬 아님",
-  incident: "즉시 대응이 필요한 장애 상태",
-};
-
-const agentDescriptions = {
-  idle: "대기 중 - 신규 작업 가능",
-  planning: "플레이북을 구성 중",
-  executing: "실행 파이프라인 동작 중",
-  awaiting_input: "사용자 HITL 응답 대기",
-  suspended: "관리자에 의해 일시 중단",
-  error: "예외 발생 - 재시작 필요",
-};
-
-const chartConfig = [
-  { key: "cpu", title: "CPU Usage", color: "#2563eb" },
-  { key: "memory", title: "Memory Usage", color: "#0f766e" },
-  { key: "storage", title: "Storage Usage", color: "#d97706" },
-];
+const fallbackStatus = (type) =>
+  type === "system" ? "initializing" : "idle";
 
 export default function SystemsPage() {
-  useMockMonitoringPublisher();
-  const { metrics, statuses, llmUsage, events } = useMonitoringStore(
-    (state) => ({
-      metrics: state.metrics,
-      statuses: state.statuses,
-      llmUsage: state.llmUsage,
-      events: state.events,
-    }),
+  const navigate = useNavigate();
+  const systems = useMonitoringStore((state) => state.systems);
+
+  const cards = useMemo(
+    () =>
+      SYSTEM_DEFINITIONS.map((definition) => {
+        const bucket = systems[definition.apiKey];
+        const cpuSeries = bucket?.metrics?.cpu ?? [];
+        const latestCpu = cpuSeries[cpuSeries.length - 1];
+        return {
+          definition,
+          bucket,
+          cpuSeries,
+          latestCpu,
+        };
+      }),
+    [systems],
   );
 
-  const heartbeatAge = statuses.heartbeatTs
-    ? Math.max(0, Math.round((Date.now() - statuses.heartbeatTs) / 1000))
-    : null;
+  const handleNavigate = (apiKey) => {
+    navigate(`/systems/${apiKey}`);
+  };
 
   return (
-    <div className="monitoring-page">
+    <div className="systems-grid-page">
       <header className="page-header">
         <div>
-          <h1>AI Agent Monitoring Demo</h1>
-          <p>Mock Redis publisher → Zustand → Recharts 파이프라인을 확인하세요.</p>
-        </div>
-        <div className="heartbeat-indicator">
-          <span className="heartbeat-dot" />
-          {heartbeatAge === null
-            ? "Heartbeat 수신 대기 중"
-            : heartbeatAge === 0
-              ? "방금 heartbeat 수신"
-              : `${heartbeatAge}s 전 heartbeat`}
+          <h1>Systems Grid</h1>
+          <p>여러 에이전트 시스템의 상태와 최근 CPU 추세를 한눈에 확인하세요.</p>
         </div>
       </header>
 
-      <section className="status-grid">
-        <StatusPanel
-          title="System Status"
-          value={statuses.system}
-          description={statusDescriptions[statuses.system]}
-        />
-        <StatusPanel
-          title="Agent Status"
-          value={statuses.agent}
-          description={agentDescriptions[statuses.agent]}
-        />
-        <div className="card status-card">
-          <div className="status-title">LLM Load</div>
-          <div className="status-value" style={{ color: "#2563eb" }}>
-            {llmUsage.requestsPerMin
-              ? `${llmUsage.requestsPerMin} req/min`
-              : "--"}
-          </div>
-          <p className="status-desc">
-            분당 요청 {llmUsage.tokensPerMin.toLocaleString()} tokens
-          </p>
-        </div>
-      </section>
+      <section className="systems-grid">
+        {cards.map(({ definition, bucket, cpuSeries, latestCpu }) => {
+          const statuses = bucket?.statuses;
+          const systemStatus = statuses?.system ?? fallbackStatus("system");
+          const agentStatus = statuses?.agent ?? fallbackStatus("agent");
+          const heartbeatAge = statuses?.heartbeatTs
+            ? Math.max(
+                0,
+                Math.round((Date.now() - statuses.heartbeatTs) / 1000),
+              )
+            : null;
 
-      <section className="chart-grid">
-        {chartConfig.map((chart) => (
-          <MetricChart
-            key={chart.key}
-            title={chart.title}
-            data={metrics[chart.key] || []}
-            color={chart.color}
-          />
-        ))}
-      </section>
+          return (
+            <article
+              key={definition.apiKey}
+              className="system-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => handleNavigate(definition.apiKey)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleNavigate(definition.apiKey);
+                }
+              }}
+              aria-label={`${definition.name} 상세로 이동`}
+            >
+              <div className="system-card-head">
+                <div>
+                  <p className="system-card-key">{definition.apiKey}</p>
+                  <h2>{definition.name}</h2>
+                  <p className="system-card-desc">{definition.description}</p>
+                </div>
+                <div className="system-card-badges">
+                  <span className="badge badge-soft">
+                    {definition.environment}
+                  </span>
+                  <span className="badge">{definition.region}</span>
+                </div>
+              </div>
 
-      <section className="bottom-grid">
-        <LLMUsagePanel usage={llmUsage} />
-        <EventLog events={events} />
+              <div className="system-card-meta">
+                <span>{definition.owner}</span>
+                <div className="system-card-tags">
+                  {definition.tags?.map((tag) => (
+                    <span key={tag}>{tag}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="system-card-statuses">
+                {[
+                  { label: "System", value: systemStatus },
+                  { label: "Agent", value: agentStatus },
+                ].map((status) => {
+                  const color = statusPalette[status.value] || "#475467";
+                  return (
+                    <div
+                      key={status.label}
+                      className="status-pill"
+                      style={{ borderColor: color }}
+                    >
+                      <span>{status.label}</span>
+                      <strong style={{ color }}>
+                        {formatStatusLabel(status.value)}
+                      </strong>
+                    </div>
+                  );
+                })}
+                <div className="heartbeat-chip">
+                  <span
+                    className={[
+                      "heartbeat-dot",
+                      heartbeatAge !== null ? "" : "heartbeat-dot--idle",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  />
+                  {heartbeatAge === null
+                    ? "Heartbeat 대기"
+                    : heartbeatAge === 0
+                      ? "방금 수신"
+                      : `${heartbeatAge}s 전`}
+                </div>
+              </div>
+
+              <div className="system-card-spark">
+                <div>
+                  <p className="sparkbar-label">CPU (최근 30포인트)</p>
+                  <p className="sparkbar-value">
+                    {latestCpu ? `${latestCpu.value.toFixed(1)}%` : "--"}
+                  </p>
+                </div>
+                <SparkBar points={cpuSeries} />
+              </div>
+            </article>
+          );
+        })}
       </section>
     </div>
   );

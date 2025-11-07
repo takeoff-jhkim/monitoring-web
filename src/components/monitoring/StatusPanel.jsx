@@ -1,4 +1,4 @@
-const statusPalette = {
+export const statusPalette = {
   healthy: "#16a34a",
   stable: "#0f766e",
   degraded: "#d97706",
@@ -11,7 +11,7 @@ const statusPalette = {
   suspended: "#6b7280",
 };
 
-const formatLabel = (value) =>
+export const formatStatusLabel = (value) =>
   value?.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) ??
   "Unknown";
 
@@ -23,7 +23,7 @@ export default function StatusPanel({ title, value, description }) {
       <div className="status-title">{title}</div>
       <div className="status-value" style={{ color }}>
         <span className="status-dot" style={{ backgroundColor: color }} />
-        {formatLabel(value)}
+        {formatStatusLabel(value)}
       </div>
       {description && <p className="status-desc">{description}</p>}
     </div>
