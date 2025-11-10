@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import SystemCard from "../components/SystemCard";
 import { systemsApi } from "../api/monitoring/systems";
 import { SYSTEM_DEFINITIONS } from "../config/systems";
+import { stopAllMocks } from "../utils/mockPublisher";
 import { useSystemSubscription } from "../hooks/useSystemSubscription";
 import { SystemMeta, useMonitoringStore } from "../store/useMonitoringStore";
 
@@ -19,6 +20,7 @@ type ApiSystem = {
 const normaliseSystems = (payload: any): ApiSystem[] => {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.systems)) return payload.systems;
   if (Array.isArray(payload?.items)) return payload.items;
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.content)) return payload.content;
@@ -113,6 +115,7 @@ export default function SystemsList() {
         const list = normaliseSystems(response);
         setSystems(list);
         if (list.length) {
+          stopAllMocks();
           registerSystems(
             list
               .filter((item) => Boolean(item?.api_key))
@@ -146,12 +149,13 @@ export default function SystemsList() {
   }, [systems]);
 
   const cardKeys = useMemo(() => {
-    const keys = new Set<string>();
-    systems.forEach((system) => {
-      if (system?.api_key) keys.add(system.api_key);
-    });
-    Object.keys(systemsByApi).forEach((key) => keys.add(key));
-    return Array.from(keys);
+    const keys = systems
+      .map((system) => system?.api_key)
+      .filter((apiKey): apiKey is string => Boolean(apiKey));
+    if (keys.length > 0) {
+      return keys;
+    }
+    return Object.keys(systemsByApi);
   }, [systems, systemsByApi]);
 
   return (
