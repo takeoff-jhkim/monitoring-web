@@ -46,6 +46,8 @@ type SystemCardProps = {
     provider?: string;
     model_name?: string;
   } | null;
+  registeredAt?: string;
+  lastSeenAt?: string;
   lastConnectedAt?: string;
   onClick?: () => void;
 };
@@ -61,6 +63,8 @@ export function SystemCard({
   memory,
   storage,
   llm,
+  registeredAt,
+  lastSeenAt,
   lastConnectedAt,
   onClick,
 }: SystemCardProps) {
@@ -130,12 +134,19 @@ export function SystemCard({
 
       <div className="text-xs text-slate-500 space-y-1">
         <p>
+          <span className="font-medium text-slate-600">Registered</span>:
+          {" "}
+          {formatLocalTime(registeredAt)}
+        </p>
+        <p>
+          <span className="font-medium text-slate-600">Last seen</span>:
+          {" "}
+          {formatLocalTime(lastSeenAt ?? lastConnectedAt)}
+        </p>
+        <p>
           <span className="font-medium text-slate-600">LLM</span>: {llm?.mode ?? "--"}
           {llm?.provider ? ` / ${llm.provider}` : " / --"}
           {llm?.model_name ? ` / ${llm.model_name}` : " / --"}
-        </p>
-        <p>
-          <span className="font-medium text-slate-600">Last connected</span>: {formatLocalTime(lastConnectedAt)}
         </p>
       </div>
 
