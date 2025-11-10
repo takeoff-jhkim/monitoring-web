@@ -1,13 +1,17 @@
 import { Link, useParams } from "react-router-dom";
+import { useEffect } from "react";
 import MetricChart from "../components/common/MetricChart";
 import LLMUsagePanel from "../components/monitoring/LLMUsagePanel";
 import EventLog from "../components/monitoring/EventLog";
 import StatusPanel from "../components/monitoring/StatusPanel";
+import AgentList from "../components/agents/AgentList";
 import { SYSTEM_BY_KEY } from "../config/systems";
 import {
   selectLatestSnapshot,
   useMonitoringStore,
 } from "../store/useMonitoringStore";
+import { agentsApi } from "../api/monitoring/agents";
+import { STATUS_LABELS, statusClass } from "../components/SystemCard";
 
 const statusDescriptions = {
   ready: "정상적으로 연결되어 있습니다.",
@@ -20,6 +24,9 @@ const agentDescriptions = {
   idle: "대기 중 - 신규 작업 가능",
   running: "작업을 실행 중입니다.",
   done: "마지막 작업을 완료했습니다.",
+  WAITING_USER_INPUT: "사용자 입력을 기다리고 있습니다.",
+  EXECUTING_TOOL: "필요한 도구를 실행 중입니다.",
+  RESPONDING: "응답을 정리하고 있습니다.",
 };
 
 const chartConfig = [
@@ -33,6 +40,8 @@ export default function SystemDetailPage() {
   const snapshot = useMonitoringStore((state) =>
     apiKey ? selectLatestSnapshot(apiKey)(state) : undefined,
   );
+  const registerSystems = useMonitoringStore((state) => state.registerSystems);
+  const setAgentList = useMonitoringStore((state) => state.setAgentList);
 
   const metaFromConfig = apiKey ? SYSTEM_BY_KEY[apiKey] : undefined;
   const meta = { ...metaFromConfig, ...(snapshot?.meta ?? {}) };
@@ -42,7 +51,8 @@ export default function SystemDetailPage() {
   const systemStatus = snapshot?.status?.status ?? "init";
   const systemDescription =
     statusDescriptions[systemStatus] ?? "상태 정보 없음";
-  const latestAgent = snapshot?.agents?.[0];
+  const agents = snapshot?.agents ?? [];
+  const latestAgent = agents[0];
   const agentStatus = latestAgent?.status ?? "idle";
   const agentDescription =
     agentDescriptions[agentStatus] ?? "에이전트 상태 정보 없음";
@@ -61,26 +71,69 @@ export default function SystemDetailPage() {
     costUsd: 0,
   };
 
+  useEffect(() => {
+    if (!apiKey) return;
+    let isActive = true;
+
+    const loadAgents = async () => {
+      const response = await agentsApi.getAgentsBySystemKey(apiKey, 0, 50);
+      if (!isActive) return;
+
+      if (response?.system) {
+        registerSystems([
+          {
+            apiKey,
+            name: response.system.system_name,
+            owner: response.system.organization_id,
+            environment: response.system.environment,
+            region: response.system.region ?? metaFromConfig?.region,
+            description:
+              response.system.description ?? metaFromConfig?.description,
+          },
+        ]);
+      }
+
+      if (response?.agents) {
+        const normalized = response.agents.map((agent) => ({
+          id: agent.agent_id ?? agent.id,
+          name: agent.agent_name ?? agent.name,
+          status: agent.status ?? "UNKNOWN",
+          command: agent.command,
+          userEmail: agent.user_email,
+          createdAt: agent.created_at,
+          timestamp: agent.created_at
+            ? Date.parse(agent.created_at)
+            : Date.now(),
+        }));
+        setAgentList(apiKey, normalized);
+      }
+    };
+
+    loadAgents().catch((error) => {
+      console.error("Failed to load agents", error);
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    apiKey,
+    registerSystems,
+    setAgentList,
+    metaFromConfig?.description,
+    metaFromConfig?.region,
+  ]);
+
+  const systemName = meta?.name ?? apiKey;
+  const badgeStatus = systemStatus ?? "init";
+  const agentCount = agents.length;
+
   return (
     <div className="monitoring-page">
-      <header className="page-header detail-header">
-        <div>
-          <Link to="/systems" className="back-link">
-            ← Systems Grid
-          </Link>
-          <h1>{meta?.name || apiKey}</h1>
-          <p>{meta?.description || "등록되지 않은 시스템입니다."}</p>
-          <div className="detail-meta-row">
-            {meta?.environment && (
-              <span className="badge badge-soft">{meta.environment}</span>
-            )}
-            {meta?.region && <span className="badge">{meta.region}</span>}
-            {meta?.owner && <span className="badge">{meta.owner}</span>}
-            {meta?.model && (
-              <span className="badge badge-info">model: {meta.model}</span>
-            )}
-          </div>
-        </div>
+      <header className="page-header detail-page-header">
+        <Link to="/systems" className="back-link">
+          ← Systems Grid
+        </Link>
         <div className="heartbeat-indicator">
           <span
             className={[
@@ -97,6 +150,40 @@ export default function SystemDetailPage() {
               : `${heartbeatAge}s 전 heartbeat`}
         </div>
       </header>
+
+      <section className="system-detail-card card">
+        <div className="system-detail-header">
+          <div className="system-detail-identity">
+            <p className="system-detail-title">
+              system name : "{systemName || "--"}"
+            </p>
+            <p className="system-detail-subtitle">api key : "{apiKey}"</p>
+          </div>
+          <span className={`status-chip ${statusClass(badgeStatus)}`}>
+            {STATUS_LABELS[badgeStatus] ?? badgeStatus}
+          </span>
+        </div>
+        <p className="system-detail-description">
+          {meta?.description || "등록되지 않은 시스템입니다."}
+        </p>
+        <div className="system-detail-meta">
+          {meta?.environment && (
+            <span className="badge badge-soft">env: {meta.environment}</span>
+          )}
+          {meta?.region && <span className="badge">{meta.region}</span>}
+          {meta?.owner && <span className="badge">owner: {meta.owner}</span>}
+          {meta?.model && (
+            <span className="badge badge-info">model: {meta.model}</span>
+          )}
+        </div>
+        <div className="system-detail-agents">
+          <div className="system-detail-agents-head">
+            <h2>에이전트 목록</h2>
+            <span className="agent-count">{agentCount}명</span>
+          </div>
+          <AgentList agents={agents} />
+        </div>
+      </section>
 
       <section className="status-grid">
         <StatusPanel

@@ -34,6 +34,10 @@ type SystemStatusData = {
 type AgentStatusData = {
   id: string;
   status: string;
+  name?: string;
+  command?: string;
+  userEmail?: string;
+  createdAt?: string;
 };
 
 type LlmUsageData = {
@@ -98,6 +102,7 @@ type MonitoringStoreState = {
   ingestAgentStatus: (event: MonitoringEvent<AgentStatusData>) => void;
   ingestLlmUsage: (event: MonitoringEvent<LlmUsageData>) => void;
   ingestSystemEvent: (event: MonitoringEvent<SystemNewData>) => void;
+  setAgentList: (apiKey: string, agents: (AgentStatusData & { timestamp?: number })[]) => void;
 };
 
 type InternalState = MonitoringStoreState;
@@ -270,8 +275,22 @@ export const useMonitoringStore = create<MonitoringStoreState>((set, get) => ({
     const timestamp = toTimestamp(ts);
     set((state) => {
       const bucket = ensureBucket(state, apiKey);
+      const existing = bucket.agents.find((agent) => agent.id === data.id);
+      const mergedName =
+        data.name ??
+        (data as any)?.agent_name ??
+        existing?.name ??
+        undefined;
+
+      const merged = {
+        ...existing,
+        ...data,
+        name: mergedName,
+        timestamp,
+      } as AgentStatusData & { timestamp: number };
+
       const nextAgents = [
-        { ...data, timestamp },
+        merged,
         ...bucket.agents.filter((agent) => agent.id !== data.id),
       ].slice(0, MAX_AGENT_ENTRIES);
 
@@ -280,7 +299,7 @@ export const useMonitoringStore = create<MonitoringStoreState>((set, get) => ({
         channel: `mon:${apiKey}:agent:status`,
         type: "agent_status",
         level: levelFromAgentStatus(data.status),
-        message: `Agent ${data.id} → ${data.status}`,
+        message: `Agent ${merged.name ?? data.id} → ${data.status}`,
         timestamp,
       };
 
@@ -291,6 +310,46 @@ export const useMonitoringStore = create<MonitoringStoreState>((set, get) => ({
             ...bucket,
             agents: nextAgents,
             events: appendEvent(bucket.events, displayEvent),
+          },
+        },
+      };
+    });
+  },
+  setAgentList: (apiKey, agents) => {
+    if (!apiKey || !agents) return;
+    set((state) => {
+      const bucket = ensureBucket(state, apiKey);
+      const existingMap = new Map(
+        bucket.agents.map((agent) => [agent.id, agent]),
+      );
+
+      agents.forEach((agent) => {
+        if (!agent?.id) return;
+        const previous = existingMap.get(agent.id);
+        const nextTimestamp = agent.timestamp ?? previous?.timestamp ?? Date.now();
+        const name =
+          agent.name ??
+          (agent as any).agent_name ??
+          previous?.name ??
+          undefined;
+        existingMap.set(agent.id, {
+          ...previous,
+          ...agent,
+          name,
+          timestamp: nextTimestamp,
+        });
+      });
+
+      const nextAgents = Array.from(existingMap.values())
+        .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+        .slice(0, MAX_AGENT_ENTRIES);
+
+      return {
+        byApi: {
+          ...state.byApi,
+          [apiKey]: {
+            ...bucket,
+            agents: nextAgents,
           },
         },
       };

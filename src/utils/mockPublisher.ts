@@ -12,7 +12,32 @@ const randomBetween = (min: number, max: number) =>
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
 const statusOptions = ["ready", "rag_building", "ready", "off"] as const;
-const agentSequence = ["running", "idle", "running", "done"] as const;
+const agentStatusRotation = [
+  "WAITING_USER_INPUT",
+  "EXECUTING_TOOL",
+  "RESPONDING",
+  "WAITING_USER_INPUT",
+] as const;
+const agentRoster = [
+  {
+    user_email: "jj111@take-off.kr",
+    agent_id: "7452fc4e-ef5f-4e2b-ab0b-66deecea4a07",
+    agent_name: "기상봇-01",
+    user_id: 2,
+    created_at: "2025-10-17T09:21:58.208028Z",
+    command: "날씨 알려줘",
+    status: "WAITING_USER_INPUT",
+  },
+  {
+    user_email: "jj111@take-off.kr",
+    agent_id: "90c6da01-fc5f-4076-a3da-a8d8699709e0",
+    agent_name: "기상봇-02",
+    user_id: 2,
+    created_at: "2025-10-20T09:28:48.669816Z",
+    command: "날씨 알려줄래?",
+    status: "WAITING_USER_INPUT",
+  },
+] as const;
 const llmModes = [
   { mode: "external_api", provider: "OpenAI", model_name: "gpt-4.1-mini" },
   { mode: "local", provider: "Hermes", model_name: "llama-3.1-8b" },
@@ -92,6 +117,7 @@ type MockState = {
   uptime: number;
   status: typeof statusOptions[number];
   agentIndex: number;
+  agentPhase: number;
   llmIndex: number;
 };
 
@@ -103,6 +129,7 @@ const createInitialState = (): MockState => ({
   uptime: 842.7,
   status: "ready",
   agentIndex: 0,
+  agentPhase: 0,
   llmIndex: 0,
 });
 
@@ -115,8 +142,23 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
   const state = createInitialState();
   const timers: ReturnType<typeof setInterval>[] = [];
   let statusTimeout: ReturnType<typeof setTimeout> | null = null;
-  const agentId = "rag-builder";
   const mainAgentId = "main-agent";
+
+  const seedAgents = () => {
+    const timestamp = Date.now();
+    store.setAgentList(
+      apiKey,
+      agentRoster.map((agent) => ({
+        id: agent.agent_id,
+        name: agent.agent_name,
+        status: agent.status,
+        command: agent.command,
+        userEmail: agent.user_email,
+        createdAt: agent.created_at,
+        timestamp: Date.parse(agent.created_at) || timestamp,
+      })),
+    );
+  };
 
   const sendHeartbeat = () => {
     const nextHeartbeat = {
@@ -148,12 +190,20 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
   };
 
   const sendAgentStatus = () => {
-    const status = agentSequence[state.agentIndex];
+    const rosterEntry = agentRoster[state.agentIndex % agentRoster.length];
+    const status = agentStatusRotation[state.agentPhase % agentStatusRotation.length];
     sendEvent("agent_status", apiKey, {
-      id: agentId,
+      id: rosterEntry.agent_id,
       status,
+      name: rosterEntry.agent_name,
+      command: rosterEntry.command,
+      userEmail: rosterEntry.user_email,
+      createdAt: rosterEntry.created_at,
     });
-    state.agentIndex = (state.agentIndex + 1) % agentSequence.length;
+    state.agentIndex = (state.agentIndex + 1) % agentRoster.length;
+    if (state.agentIndex === 0) {
+      state.agentPhase = (state.agentPhase + 1) % agentStatusRotation.length;
+    }
   };
 
   const runStatusUpdate = () => {
@@ -210,6 +260,7 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
     last_connected_at: new Date().toISOString(),
     agent_id: mainAgentId,
   });
+  seedAgents();
   sendAgentStatus();
   const initialProfile = llmModes[state.llmIndex];
   const promptTokens = Math.round(randomBetween(220, 360));

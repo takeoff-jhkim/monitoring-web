@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 
-const STATUS_LABELS: Record<string, string> = {
+export const STATUS_LABELS: Record<string, string> = {
   ready: "Ready",
   off: "Off",
   init: "Init",
   rag_building: "RAG Building",
 };
 
-const statusClass = (status: string | undefined) => {
+export const statusClass = (status: string | undefined) => {
   switch (status) {
     case "ready":
       return "status-ready";
