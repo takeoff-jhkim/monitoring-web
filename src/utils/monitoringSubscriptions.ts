@@ -151,7 +151,7 @@ export const monitoringSubscriptions = {
       return registry.get(apiKey) as Cleanup;
     }
 
-    const cleanup = ENV.USE_MONITORING_MOCKS
+    const cleanup = ENV.USE_MOCK
       ? createMockSubscription(apiKey)
       : createSseSubscription(apiKey);
 

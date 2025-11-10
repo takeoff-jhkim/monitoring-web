@@ -1,5 +1,6 @@
 import { apiClient } from "../client";
 import { SYSTEM_DEFINITIONS } from "../../config/systems";
+import { ENV } from "../../config/env";
 
 const normalizeSystem = (system) => {
   if (!system) return null;
@@ -83,6 +84,17 @@ const buildMockSystems = () => {
 
 export const systemsApi = {
   async getSystemList(page = 0, size = 20) {
+    if (ENV.USE_MOCK) {
+      return {
+        systems: buildMockSystems(),
+        page,
+        size,
+        total: SYSTEM_DEFINITIONS.length,
+        isMock: true,
+        error: null,
+      };
+    }
+
     try {
       const response = await apiClient.get("/api/admin/systems", {
         params: { page, size },

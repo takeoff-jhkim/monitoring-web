@@ -1,5 +1,6 @@
 import { apiClient } from "../client";
 import { SYSTEM_BY_KEY } from "../../config/systems";
+import { ENV } from "../../config/env";
 
 const BASE_AGENT_RESPONSE = {
   total: 2,
@@ -65,6 +66,10 @@ const buildMockAgentResponse = (apiKey) => {
 
 export const agentsApi = {
   async getAgentsBySystemKey(apiKey, page = 0, size = 50) {
+    if (ENV.USE_MOCK) {
+      return buildMockAgentResponse(apiKey);
+    }
+
     try {
       const response = await apiClient.get(
         `/api/admin/systems/${apiKey}/agents`,
