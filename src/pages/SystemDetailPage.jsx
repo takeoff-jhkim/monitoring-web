@@ -1,9 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect } from "react";
 import MetricChart from "../components/common/MetricChart";
-import LLMUsagePanel from "../components/monitoring/LLMUsagePanel";
 import EventLog from "../components/monitoring/EventLog";
-import StatusPanel from "../components/monitoring/StatusPanel";
 import AgentList from "../components/agents/AgentList";
 import { SYSTEM_BY_KEY } from "../config/systems";
 import {
@@ -13,22 +11,6 @@ import {
 import { agentsApi } from "../api/monitoring/agents";
 import { STATUS_LABELS, statusClass } from "../components/SystemCard";
 import { formatLocalTime } from "../utils/datetime";
-
-const statusDescriptions = {
-  ready: "정상적으로 연결되어 있습니다.",
-  off: "연결이 해제된 상태입니다.",
-  init: "초기화 중입니다.",
-  rag_building: "RAG 자원을 준비 중입니다.",
-};
-
-const agentDescriptions = {
-  idle: "대기 중 - 신규 작업 가능",
-  running: "작업을 실행 중입니다.",
-  done: "마지막 작업을 완료했습니다.",
-  WAITING_USER_INPUT: "사용자 입력을 기다리고 있습니다.",
-  EXECUTING_TOOL: "필요한 도구를 실행 중입니다.",
-  RESPONDING: "응답을 정리하고 있습니다.",
-};
 
 const chartConfig = [
   { key: "cpu", title: "CPU Usage", color: "#2563eb" },
@@ -49,13 +31,7 @@ export function SystemDetailPanel({ apiKey }) {
   const metrics = snapshot?.metrics ?? { cpu: [], memory: [], storage: [] };
   const events = snapshot?.events ?? [];
   const systemStatus = snapshot?.status?.status ?? "init";
-  const systemDescription =
-    statusDescriptions[systemStatus] ?? "상태 정보 없음";
   const agents = snapshot?.agents ?? [];
-  const latestAgent = agents[0];
-  const agentStatus = latestAgent?.status ?? "idle";
-  const agentDescription =
-    agentDescriptions[agentStatus] ?? "에이전트 상태 정보 없음";
   const heartbeatAge = snapshot?.lastHeartbeatTs
     ? Math.max(0, Math.round((Date.now() - snapshot.lastHeartbeatTs) / 1000))
     : null;
@@ -285,30 +261,6 @@ export function SystemDetailPanel({ apiKey }) {
         </div>
       </section>
 
-      <section className="status-grid">
-        <StatusPanel
-          title="System Status"
-          value={systemStatus}
-          description={systemDescription}
-        />
-        <StatusPanel
-          title="Agent Status"
-          value={agentStatus}
-          description={agentDescription}
-        />
-        <div className="card status-card">
-          <div className="status-title">LLM Load</div>
-          <div className="status-value" style={{ color: "#2563eb" }}>
-            {llmUsage.requestsPerMin
-              ? `${llmUsage.requestsPerMin} req/min`
-              : "--"}
-          </div>
-          <p className="status-desc">
-            모드 {llmUsage.mode ?? "--"} · 모델 {llmUsage.model_name ?? "--"}
-          </p>
-        </div>
-      </section>
-
       <section className="chart-grid">
         {chartConfig.map((chart) => (
           <MetricChart
@@ -321,7 +273,6 @@ export function SystemDetailPanel({ apiKey }) {
       </section>
 
       <section className="bottom-grid">
-        <LLMUsagePanel usage={llmUsage} />
         <EventLog events={events} />
       </section>
     </div>
