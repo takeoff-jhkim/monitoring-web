@@ -72,6 +72,8 @@ export type SystemMeta = {
   region?: string;
   model?: string;
   tags?: string[];
+  registeredAt?: string;
+  lastSeenAt?: string;
 };
 
 type SystemBucket = {
