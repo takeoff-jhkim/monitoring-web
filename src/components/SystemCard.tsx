@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { formatLocalTime } from "../utils/datetime";
 
 export const STATUS_LABELS: Record<string, string> = {
   ready: "Ready",
@@ -60,13 +61,6 @@ const formatPercent = (value?: number | null) =>
   typeof value === "number" && !Number.isNaN(value)
     ? `${value.toFixed(1)}%`
     : "--";
-
-const formatLocalTime = (iso?: string) => {
-  if (!iso) return "--";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "--";
-  return date.toLocaleString();
-};
 
 type SystemCardProps = {
   apiKey: string;

@@ -12,6 +12,7 @@ import {
 } from "../store/useMonitoringStore";
 import { agentsApi } from "../api/monitoring/agents";
 import { STATUS_LABELS, statusClass } from "../components/SystemCard";
+import { formatLocalTime } from "../utils/datetime";
 
 const statusDescriptions = {
   ready: "정상적으로 연결되어 있습니다.",
