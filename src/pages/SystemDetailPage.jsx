@@ -137,6 +137,12 @@ export function SystemDetailPanel({ apiKey }) {
             region: response.system.region ?? metaFromConfig?.region,
             description:
               response.system.description ?? metaFromConfig?.description,
+            registeredAt: response.system.registered_at ?? null,
+            lastSeenAt: response.system.last_seen_at ?? null,
+            status: response.system.status
+              ? response.system.status.toLowerCase()
+              : null,
+            healthStatus: response.system.health_status ?? null,
           },
         ]);
       }
@@ -227,6 +233,16 @@ export function SystemDetailPanel({ apiKey }) {
           {meta?.owner && <span className="badge">owner: {meta.owner}</span>}
           {meta?.model && (
             <span className="badge badge-info">model: {meta.model}</span>
+          )}
+          {meta?.registeredAt && (
+            <span className="badge badge-soft">
+              registered: {formatLocalTime(meta.registeredAt)}
+            </span>
+          )}
+          {meta?.lastSeenAt && (
+            <span className="badge badge-soft">
+              last seen: {formatLocalTime(meta.lastSeenAt)}
+            </span>
           )}
         </div>
         <div className="system-detail-usage">
