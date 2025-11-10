@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-const MAX_HEARTBEATS = 120;
+const MAX_HEARTBEATS = 60;
 const MAX_EVENTS = 60;
 const MAX_AGENT_ENTRIES = 8;
 
@@ -34,6 +34,10 @@ type SystemStatusData = {
 type AgentStatusData = {
   id: string;
   status: string;
+  name?: string;
+  command?: string;
+  userEmail?: string;
+  createdAt?: string;
 };
 
 type LlmUsageData = {
@@ -72,6 +76,25 @@ export type SystemMeta = {
   region?: string;
   model?: string;
   tags?: string[];
+  registeredAt?: string | null;
+  lastSeenAt?: string | null;
+  status?: string | null;
+  healthStatus?: string | null;
+};
+
+export type SystemListEntry = {
+  apiKey: string;
+  systemName?: string | null;
+  environment?: string | null;
+  organizationId?: string | null;
+  registeredAt?: string | null;
+  lastSeenAt?: string | null;
+  status?: string | null;
+  healthStatus?: string | null;
+  description?: string | null;
+  region?: string | null;
+  model?: string | null;
+  tags?: string[] | null;
 };
 
 type SystemBucket = {
@@ -92,12 +115,17 @@ type SystemBucket = {
 
 type MonitoringStoreState = {
   byApi: Record<string, SystemBucket>;
+  systemList: SystemListEntry[];
+  selectedApiKey: string | null;
   registerSystems: (systems: SystemMeta[]) => void;
   ingestHeartbeat: (event: MonitoringEvent<HeartbeatData>) => void;
   ingestSystemStatus: (event: MonitoringEvent<SystemStatusData>) => void;
   ingestAgentStatus: (event: MonitoringEvent<AgentStatusData>) => void;
   ingestLlmUsage: (event: MonitoringEvent<LlmUsageData>) => void;
   ingestSystemEvent: (event: MonitoringEvent<SystemNewData>) => void;
+  setAgentList: (apiKey: string, agents: (AgentStatusData & { timestamp?: number })[]) => void;
+  setSystemList: (systems: SystemListEntry[]) => void;
+  setSelectedApiKey: (apiKey: string | null) => void;
 };
 
 type InternalState = MonitoringStoreState;
@@ -158,11 +186,15 @@ const levelFromAgentStatus = (status: string): "info" | "warning" | "error" => {
 
 export const useMonitoringStore = create<MonitoringStoreState>((set, get) => ({
   byApi: {},
+  systemList: [],
+  selectedApiKey: null,
   registerSystems: (systems) => {
     if (!systems || systems.length === 0) return;
     set((state) => {
       const next: Record<string, SystemBucket> = { ...state.byApi };
       let mutated = false;
+      let listMutated = false;
+      let nextList = state.systemList;
       systems.forEach((system) => {
         if (!system.apiKey) return;
         const existing = state.byApi[system.apiKey];
@@ -175,8 +207,36 @@ export const useMonitoringStore = create<MonitoringStoreState>((set, get) => ({
           next[system.apiKey] = createBucket(system.apiKey, system);
         }
         mutated = true;
+
+        const index = state.systemList.findIndex(
+          (entry) => entry.apiKey === system.apiKey,
+        );
+        if (index !== -1) {
+          if (!listMutated) {
+            nextList = [...state.systemList];
+            listMutated = true;
+          }
+          const current = nextList[index];
+          nextList[index] = {
+            ...current,
+            systemName: system.name ?? current.systemName,
+            environment: system.environment ?? current.environment,
+            organizationId: system.owner ?? current.organizationId,
+            registeredAt: system.registeredAt ?? current.registeredAt,
+            lastSeenAt: system.lastSeenAt ?? current.lastSeenAt,
+            status: system.status ?? current.status,
+            healthStatus: system.healthStatus ?? current.healthStatus,
+            description: system.description ?? current.description,
+            region: system.region ?? current.region,
+            model: system.model ?? current.model,
+            tags: system.tags ?? current.tags,
+          };
+        }
       });
-      return mutated ? { byApi: next } : state;
+      const result: Partial<MonitoringStoreState> = {};
+      if (mutated) result.byApi = next;
+      if (listMutated) result.systemList = nextList;
+      return mutated || listMutated ? result : state;
     });
   },
   ingestHeartbeat: (event) => {
@@ -270,8 +330,22 @@ export const useMonitoringStore = create<MonitoringStoreState>((set, get) => ({
     const timestamp = toTimestamp(ts);
     set((state) => {
       const bucket = ensureBucket(state, apiKey);
+      const existing = bucket.agents.find((agent) => agent.id === data.id);
+      const mergedName =
+        data.name ??
+        (data as any)?.agent_name ??
+        existing?.name ??
+        undefined;
+
+      const merged = {
+        ...existing,
+        ...data,
+        name: mergedName,
+        timestamp,
+      } as AgentStatusData & { timestamp: number };
+
       const nextAgents = [
-        { ...data, timestamp },
+        merged,
         ...bucket.agents.filter((agent) => agent.id !== data.id),
       ].slice(0, MAX_AGENT_ENTRIES);
 
@@ -280,7 +354,7 @@ export const useMonitoringStore = create<MonitoringStoreState>((set, get) => ({
         channel: `mon:${apiKey}:agent:status`,
         type: "agent_status",
         level: levelFromAgentStatus(data.status),
-        message: `Agent ${data.id} → ${data.status}`,
+        message: `Agent ${merged.name ?? data.id} → ${data.status}`,
         timestamp,
       };
 
@@ -295,6 +369,100 @@ export const useMonitoringStore = create<MonitoringStoreState>((set, get) => ({
         },
       };
     });
+  },
+  setAgentList: (apiKey, agents) => {
+    if (!apiKey || !agents) return;
+    set((state) => {
+      const bucket = ensureBucket(state, apiKey);
+      const existingMap = new Map(
+        bucket.agents.map((agent) => [agent.id, agent]),
+      );
+
+      agents.forEach((agent) => {
+        if (!agent?.id) return;
+        const previous = existingMap.get(agent.id);
+        const nextTimestamp = agent.timestamp ?? previous?.timestamp ?? Date.now();
+        const name =
+          agent.name ??
+          (agent as any).agent_name ??
+          previous?.name ??
+          undefined;
+        existingMap.set(agent.id, {
+          ...previous,
+          ...agent,
+          name,
+          timestamp: nextTimestamp,
+        });
+      });
+
+      const nextAgents = Array.from(existingMap.values())
+        .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+        .slice(0, MAX_AGENT_ENTRIES);
+
+      return {
+        byApi: {
+          ...state.byApi,
+          [apiKey]: {
+            ...bucket,
+            agents: nextAgents,
+          },
+        },
+      };
+    });
+  },
+  setSystemList: (systems) => {
+    const normalized = Array.isArray(systems)
+      ? systems.filter((system) => system && system.apiKey)
+      : [];
+
+    set((state) => {
+      const nextByApi: Record<string, SystemBucket> = { ...state.byApi };
+      normalized.forEach((system) => {
+        const apiKey = system.apiKey;
+        const existing = nextByApi[apiKey] ?? createBucket(apiKey, {});
+        nextByApi[apiKey] = {
+          ...existing,
+          meta: {
+            ...existing.meta,
+            apiKey,
+            name: system.systemName ?? existing.meta.name,
+            description: system.description ?? existing.meta.description,
+            owner: system.organizationId ?? existing.meta.owner,
+            environment: system.environment ?? existing.meta.environment,
+            region: system.region ?? existing.meta.region,
+            model: system.model ?? existing.meta.model,
+            tags: system.tags ?? existing.meta.tags,
+            registeredAt: system.registeredAt ?? existing.meta.registeredAt,
+            lastSeenAt: system.lastSeenAt ?? existing.meta.lastSeenAt,
+            status: system.status ?? existing.meta.status,
+            healthStatus: system.healthStatus ?? existing.meta.healthStatus,
+          },
+        };
+      });
+
+      return {
+        byApi: nextByApi,
+        systemList: normalized.map((system) => ({
+          apiKey: system.apiKey,
+          systemName: system.systemName ?? null,
+          environment: system.environment ?? null,
+          organizationId: system.organizationId ?? null,
+          registeredAt: system.registeredAt ?? null,
+          lastSeenAt: system.lastSeenAt ?? null,
+          status: system.status ?? null,
+          healthStatus: system.healthStatus ?? null,
+          description: system.description ?? null,
+          region: system.region ?? null,
+          model: system.model ?? null,
+          tags: system.tags ?? null,
+        })),
+      };
+    });
+  },
+  setSelectedApiKey: (apiKey) => {
+    set((state) =>
+      state.selectedApiKey === apiKey ? state : { selectedApiKey: apiKey },
+    );
   },
   ingestLlmUsage: (event) => {
     const { api_key: apiKey, data, ts } = event;
@@ -379,5 +547,10 @@ export const selectLatestSnapshot = (apiKey: string) => (
 
 export const selectAllSystems = (state: MonitoringStoreState) =>
   Object.values(state.byApi);
+
+export const selectSystemList = (state: MonitoringStoreState) => state.systemList;
+
+export const selectSelectedApiKey = (state: MonitoringStoreState) =>
+  state.selectedApiKey;
 
 export type { HeartbeatData, SystemStatusData, AgentStatusData, LlmUsageData };

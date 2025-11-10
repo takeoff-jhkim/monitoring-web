@@ -1,20 +1,22 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { SYSTEM_DEFINITIONS } from "./config/systems";
-import { useMockMonitoringPublisher } from "./mocks/useMockMonitoringPublisher";
-import SystemDetailPage from "./pages/SystemDetailPage";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import SystemsList from "./pages/SystemsList";
 
-function App() {
-  useMockMonitoringPublisher(SYSTEM_DEFINITIONS);
+function LegacySystemRedirect() {
+  const { apiKey } = useParams();
+  const target = apiKey
+    ? `/systems?apiKey=${encodeURIComponent(apiKey)}`
+    : "/systems";
+  return <Navigate to={target} replace />;
+}
 
+function App() {
   return (
     <Routes>
       {/* 기본 진입은 /systems 로 */}
       <Route path="/" element={<Navigate to="/systems" replace />} />
-      {/* 시스템 목록 페이지 */}
+      {/* 시스템 목록 + 상세 워크스페이스 */}
       <Route path="/systems" element={<SystemsList />} />
-      {/* 시스템 상세 */}
-      <Route path="/systems/:apiKey" element={<SystemDetailPage />} />
+      <Route path="/systems/:apiKey" element={<LegacySystemRedirect />} />
       {/* 없는 경로 처리 */}
       <Route path="*" element={<Navigate to="/systems" replace />} />
     </Routes>
