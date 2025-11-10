@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import SystemCard from "../components/SystemCard";
 import { systemsApi } from "../api/monitoring/systems";
@@ -69,6 +69,7 @@ export default function SystemsList() {
     (state) => state.setSelectedApiKey,
   );
   const systemsByKey = useMonitoringStore((state) => state.byApi);
+  const monitoredKeysRef = useRef<string[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -137,6 +138,24 @@ export default function SystemsList() {
     systemList,
     loading,
   ]);
+
+  useEffect(() => {
+    const nextKeys = systemList.map((system) => system.apiKey);
+    const nextKeySet = new Set(nextKeys);
+    const prevKeys = monitoredKeysRef.current;
+
+    nextKeys.forEach((key) => {
+      monitoringSubscriptions.start(key);
+    });
+
+    prevKeys.forEach((key) => {
+      if (!nextKeySet.has(key)) {
+        monitoringSubscriptions.stop(key);
+      }
+    });
+
+    monitoredKeysRef.current = nextKeys;
+  }, [systemList]);
 
   useEffect(() => {
     if (!selectedApiKey) return;

@@ -33,7 +33,12 @@ const EVENT_TYPES = [
   "system_event",
 ];
 
-const registry = new Map<string, Cleanup>();
+type RegistryEntry = {
+  cleanup: Cleanup;
+  refCount: number;
+};
+
+const registry = new Map<string, RegistryEntry>();
 
 const inferTypeFromChannel = (channel?: string) => {
   if (!channel) return undefined;
@@ -144,38 +149,57 @@ const createMockSubscription = (apiKey: string): Cleanup => {
   };
 };
 
+const decrement = (apiKey: string) => {
+  const entry = registry.get(apiKey);
+  if (!entry) return;
+
+  entry.refCount -= 1;
+
+  if (entry.refCount <= 0) {
+    try {
+      entry.cleanup?.();
+    } finally {
+      registry.delete(apiKey);
+    }
+  } else {
+    registry.set(apiKey, entry);
+  }
+};
+
 export const monitoringSubscriptions = {
   start(apiKey: string) {
     if (!apiKey) return () => {};
-    if (registry.has(apiKey)) {
-      return registry.get(apiKey) as Cleanup;
+
+    const existing = registry.get(apiKey);
+    if (existing) {
+      existing.refCount += 1;
+      registry.set(apiKey, existing);
+    } else {
+      const cleanup = ENV.USE_MOCK
+        ? createMockSubscription(apiKey)
+        : createSseSubscription(apiKey);
+
+      registry.set(apiKey, {
+        cleanup,
+        refCount: 1,
+      });
     }
 
-    const cleanup = ENV.USE_MOCK
-      ? createMockSubscription(apiKey)
-      : createSseSubscription(apiKey);
+    let released = false;
 
-    const stop = () => {
-      cleanup?.();
-      registry.delete(apiKey);
+    return () => {
+      if (released) return;
+      released = true;
+      decrement(apiKey);
     };
-
-    registry.set(apiKey, stop);
-    return stop;
   },
   stop(apiKey: string) {
-    const stop = registry.get(apiKey);
-    if (stop) {
-      stop();
-      registry.delete(apiKey);
-    }
+    if (!apiKey) return;
+    decrement(apiKey);
   },
   stopAll() {
-    Array.from(registry.keys()).forEach((key) => {
-      const stop = registry.get(key);
-      if (stop) {
-        stop();
-      }
+    Array.from(registry.values()).forEach((entry) => {
+      entry.cleanup?.();
     });
     registry.clear();
   },
