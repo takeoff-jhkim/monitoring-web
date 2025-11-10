@@ -1,5 +1,15 @@
 export const SYSTEM_DEFINITIONS = [
   {
+    apiKey: "sys_dev_0254e56f413f_71ec",
+    name: "toa-k8s",
+    description: "toa-k8s dev 클러스터 모니터링 시스템",
+    owner: "toa-k8s-1",
+    environment: "dev",
+    region: "ap-northeast-2",
+    model: "gpt-4.1-mini",
+    tags: ["dev", "k8s"],
+  },
+  {
     apiKey: "abc123",
     name: "Customer Care Router",
     description: "실시간 상담 티켓을 라우팅하는 메인 오케스트레이터.",
