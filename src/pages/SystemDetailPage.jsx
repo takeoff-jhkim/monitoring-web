@@ -63,13 +63,36 @@ export default function SystemDetailPage() {
     mode: "--",
     provider: "--",
     model_name: "--",
-    promptTokens: 0,
-    completionTokens: 0,
-    totalTokens: 0,
-    requestsPerMin: 0,
-    tokensPerMin: 0,
-    costUsd: 0,
+    promptTokens: null,
+    completionTokens: null,
+    totalTokens: null,
+    requestsPerMin: null,
+    tokensPerMin: null,
+    costUsd: null,
   };
+
+  const latestMetricValue = (series) =>
+    Array.isArray(series) && series.length > 0
+      ? series[series.length - 1]?.value ?? null
+      : null;
+
+  const formatPercent = (value) =>
+    typeof value === "number" && Number.isFinite(value)
+      ? `${value.toFixed(1)}%`
+      : "--";
+
+  const latestCpu = latestMetricValue(metrics.cpu);
+  const latestMemory = latestMetricValue(metrics.memory);
+  const latestStorage = latestMetricValue(metrics.storage);
+
+  const llmLoadValue =
+    typeof llmUsage.requestsPerMin === "number" &&
+    Number.isFinite(llmUsage.requestsPerMin)
+      ? `${llmUsage.requestsPerMin.toFixed(1)} req/min`
+      : typeof llmUsage.tokensPerMin === "number" &&
+          Number.isFinite(llmUsage.tokensPerMin)
+        ? `${llmUsage.tokensPerMin.toFixed(0)} tpm`
+        : "--";
 
   useEffect(() => {
     if (!apiKey) return;
@@ -175,6 +198,24 @@ export default function SystemDetailPage() {
           {meta?.model && (
             <span className="badge badge-info">model: {meta.model}</span>
           )}
+        </div>
+        <div className="system-detail-usage">
+          <div className="usage-stat">
+            <span className="usage-label">CPU Usage</span>
+            <span className="usage-value">{formatPercent(latestCpu)}</span>
+          </div>
+          <div className="usage-stat">
+            <span className="usage-label">Memory Usage</span>
+            <span className="usage-value">{formatPercent(latestMemory)}</span>
+          </div>
+          <div className="usage-stat">
+            <span className="usage-label">Storage Usage</span>
+            <span className="usage-value">{formatPercent(latestStorage)}</span>
+          </div>
+          <div className="usage-stat">
+            <span className="usage-label">LLM Load</span>
+            <span className="usage-value">{llmLoadValue}</span>
+          </div>
         </div>
         <div className="system-detail-agents">
           <div className="system-detail-agents-head">
