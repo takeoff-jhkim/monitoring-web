@@ -48,6 +48,7 @@ type SystemCardProps = {
   } | null;
   lastConnectedAt?: string;
   onClick?: () => void;
+  isSelected?: boolean;
 };
 
 const WINDOW = 30;
@@ -63,6 +64,7 @@ export function SystemCard({
   llm,
   lastConnectedAt,
   onClick,
+  isSelected = false,
 }: SystemCardProps) {
   const bars = useMemo(() => {
     const trimmed = cpuSeries.slice(-WINDOW);
@@ -76,14 +78,22 @@ export function SystemCard({
   }, [cpuSeries]);
 
   const badgeStatus = status ?? "init";
+  const cardClasses = [
+    "rounded-2xl shadow p-4 bg-white flex flex-col gap-3 transition-shadow",
+    "hover:shadow-lg focus-within:shadow-lg cursor-pointer",
+    isSelected ? "ring-2 ring-offset-2 ring-sky-500" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <article
-      className="rounded-2xl shadow p-4 bg-white flex flex-col gap-3 transition-shadow hover:shadow-lg focus-within:shadow-lg cursor-pointer"
+      className={cardClasses}
       onClick={onClick}
       role="button"
       tabIndex={0}
       aria-label={`${apiKey} 시스템 상세 보기`}
+      aria-pressed={isSelected}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();

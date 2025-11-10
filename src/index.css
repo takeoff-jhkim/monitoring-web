@@ -431,6 +431,25 @@ input, textarea, select {
   margin-bottom: 28px;
 }
 
+.system-detail-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.system-detail-panel-head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.system-detail-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  text-align: center;
+  color: #475467;
+}
+
 .system-detail-header {
   display: flex;
   align-items: flex-start;

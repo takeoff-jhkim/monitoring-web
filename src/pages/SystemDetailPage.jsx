@@ -35,8 +35,7 @@ const chartConfig = [
   { key: "storage", title: "Storage Usage", color: "#d97706" },
 ];
 
-export default function SystemDetailPage() {
-  const { apiKey } = useParams();
+export function SystemDetailPanel({ apiKey }) {
   const snapshot = useMonitoringStore((state) =>
     apiKey ? selectLatestSnapshot(apiKey)(state) : undefined,
   );
@@ -173,16 +172,21 @@ export default function SystemDetailPage() {
     metaFromConfig?.region,
   ]);
 
+  if (!apiKey) {
+    return (
+      <div className="card system-detail-empty">
+        <p>시스템을 선택하면 상세 정보를 확인할 수 있습니다.</p>
+      </div>
+    );
+  }
+
   const systemName = meta?.name ?? apiKey;
   const badgeStatus = systemStatus ?? "init";
   const agentCount = agents.length;
 
   return (
-    <div className="monitoring-page">
-      <header className="page-header detail-page-header">
-        <Link to="/systems" className="back-link">
-          ← Systems Grid
-        </Link>
+    <div className="system-detail-panel space-y-6">
+      <div className="system-detail-panel-head">
         <div className="heartbeat-indicator">
           <span
             className={[
@@ -198,7 +202,7 @@ export default function SystemDetailPage() {
               ? "방금 heartbeat 수신"
               : `${heartbeatAge}s 전 heartbeat`}
         </div>
-      </header>
+      </div>
 
       <section className="system-detail-card card">
         <div className="system-detail-header">
@@ -303,6 +307,21 @@ export default function SystemDetailPage() {
         <LLMUsagePanel usage={llmUsage} />
         <EventLog events={events} />
       </section>
+    </div>
+  );
+}
+
+export default function SystemDetailPage() {
+  const { apiKey } = useParams();
+
+  return (
+    <div className="monitoring-page">
+      <header className="page-header detail-page-header">
+        <Link to="/systems" className="back-link">
+          ← Systems Grid
+        </Link>
+      </header>
+      <SystemDetailPanel apiKey={apiKey} />
     </div>
   );
 }
