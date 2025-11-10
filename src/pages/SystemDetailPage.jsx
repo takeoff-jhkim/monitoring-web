@@ -85,6 +85,32 @@ export default function SystemDetailPage() {
   const latestMemory = latestMetricValue(metrics.memory);
   const latestStorage = latestMetricValue(metrics.storage);
 
+  const clampPercent = (value) =>
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.min(100, Math.max(0, value))
+      : null;
+
+  const usagePercentStats = [
+    {
+      key: "cpu",
+      label: "CPU Usage",
+      value: latestCpu,
+      barClass: "usage-bar-fill--cpu",
+    },
+    {
+      key: "memory",
+      label: "Memory Usage",
+      value: latestMemory,
+      barClass: "usage-bar-fill--memory",
+    },
+    {
+      key: "storage",
+      label: "Storage Usage",
+      value: latestStorage,
+      barClass: "usage-bar-fill--storage",
+    },
+  ];
+
   const llmLoadValue =
     typeof llmUsage.requestsPerMin === "number" &&
     Number.isFinite(llmUsage.requestsPerMin)
@@ -200,18 +226,30 @@ export default function SystemDetailPage() {
           )}
         </div>
         <div className="system-detail-usage">
-          <div className="usage-stat">
-            <span className="usage-label">CPU Usage</span>
-            <span className="usage-value">{formatPercent(latestCpu)}</span>
-          </div>
-          <div className="usage-stat">
-            <span className="usage-label">Memory Usage</span>
-            <span className="usage-value">{formatPercent(latestMemory)}</span>
-          </div>
-          <div className="usage-stat">
-            <span className="usage-label">Storage Usage</span>
-            <span className="usage-value">{formatPercent(latestStorage)}</span>
-          </div>
+          {usagePercentStats.map((stat) => {
+            const percent = clampPercent(stat.value);
+            return (
+              <div className="usage-stat" key={stat.key}>
+                <span className="usage-label">{stat.label}</span>
+                <div
+                  className={[
+                    "usage-bar",
+                    percent === null ? "usage-bar--empty" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <div
+                    className={["usage-bar-fill", stat.barClass]
+                      .filter(Boolean)
+                      .join(" ")}
+                    style={{ width: `${percent ?? 0}%` }}
+                  />
+                </div>
+                <span className="usage-value">{formatPercent(stat.value)}</span>
+              </div>
+            );
+          })}
           <div className="usage-stat">
             <span className="usage-label">LLM Load</span>
             <span className="usage-value">{llmLoadValue}</span>

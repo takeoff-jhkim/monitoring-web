@@ -493,6 +493,38 @@ input, textarea, select {
   letter-spacing: 0.04em;
 }
 
+.usage-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.usage-bar-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+
+.usage-bar-fill--cpu {
+  background: linear-gradient(90deg, #1d4ed8, #2563eb);
+}
+
+.usage-bar-fill--memory {
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+}
+
+.usage-bar-fill--storage {
+  background: linear-gradient(90deg, #b45309, #d97706);
+}
+
+.usage-bar--empty .usage-bar-fill {
+  background: transparent;
+}
+
 .usage-value {
   font-size: 1.1rem;
   font-weight: 600;
