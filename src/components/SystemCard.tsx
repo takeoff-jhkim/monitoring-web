@@ -92,10 +92,11 @@ export function SystemCard({
       }}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">API Key</p>
-          <h3 className="text-lg font-semibold text-slate-900">{apiKey}</h3>
-          {name && <p className="text-sm text-slate-500">{name}</p>}
+        <div className="space-y-1 text-sm">
+          <p className="font-semibold text-slate-900">
+            system name : "{name ?? "--"}"
+          </p>
+          <p className="text-slate-500">api key : "{apiKey}"</p>
         </div>
         <span className={`status-chip ${statusClass(badgeStatus)}`}>
           {STATUS_LABELS[badgeStatus] ?? badgeStatus}
