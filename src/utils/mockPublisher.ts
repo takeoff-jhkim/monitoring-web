@@ -11,8 +11,8 @@ const randomBetween = (min: number, max: number) =>
   Math.random() * (max - min) + min;
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
-const statusOptions = ["init", "ready", "rag_building", "ready", "off"] as const;
-const agentSequence = ["idle", "running", "done"] as const;
+const statusOptions = ["ready", "rag_building", "ready", "off"] as const;
+const agentSequence = ["running", "idle", "running", "done"] as const;
 const llmModes = [
   { mode: "external_api", provider: "OpenAI", model_name: "gpt-4.1-mini" },
   { mode: "local", provider: "Hermes", model_name: "llama-3.1-8b" },
@@ -63,9 +63,10 @@ const ensureSystemNewTimer = () => {
       const activeKeys = Array.from(handles.keys());
       if (activeKeys.length > 0) {
         const apiKey = pick(activeKeys);
+        const suffix = String(Math.floor(Math.random() * 99) + 1).padStart(2, "0");
         const payload = {
           event: "created",
-          agent_id: `assistant-${Math.floor(Math.random() * 90 + 10)}`,
+          agent_id: `assistant-${suffix}`,
           created_at: new Date().toISOString(),
         };
         sendEvent("system_event", apiKey, payload);
@@ -95,12 +96,12 @@ type MockState = {
 };
 
 const createInitialState = (): MockState => ({
-  cpu: randomBetween(25, 55),
-  memory: randomBetween(30, 65),
-  storage: randomBetween(35, 60),
-  temperature: randomBetween(45, 60),
-  uptime: 0,
-  status: "init",
+  cpu: 27.5,
+  memory: 43.1,
+  storage: 39.0,
+  temperature: 61.2,
+  uptime: 842.7,
+  status: "ready",
   agentIndex: 0,
   llmIndex: 0,
 });
@@ -114,17 +115,12 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
   const state = createInitialState();
   const timers: ReturnType<typeof setInterval>[] = [];
   let statusTimeout: ReturnType<typeof setTimeout> | null = null;
-  const agentId = `${apiKey}-agent`;
+  const agentId = "rag-builder";
+  const mainAgentId = "main-agent";
 
   const sendHeartbeat = () => {
-    state.uptime += 5;
-    state.cpu = clamp(state.cpu + randomBetween(-6, 6), 5, 98);
-    state.memory = clamp(state.memory + randomBetween(-4, 5), 10, 96);
-    state.storage = clamp(state.storage + randomBetween(-2, 2), 10, 95);
-    state.temperature = clamp(state.temperature + randomBetween(-3, 3), 30, 80);
-
-    sendEvent("heartbeat", apiKey, {
-      uptime_seconds: state.uptime,
+    const nextHeartbeat = {
+      uptime_seconds: Number(state.uptime.toFixed(1)),
       hardware: {
         cpu: {
           util_percent: Number(state.cpu.toFixed(1)),
@@ -140,7 +136,15 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
           },
         ],
       },
-    });
+    };
+
+    sendEvent("heartbeat", apiKey, nextHeartbeat);
+
+    state.uptime = Number((state.uptime + randomBetween(4.5, 5.5)).toFixed(1));
+    state.cpu = clamp(state.cpu + randomBetween(-2.5, 2.5), 5, 95);
+    state.memory = clamp(state.memory + randomBetween(-1.5, 1.5), 10, 90);
+    state.storage = clamp(state.storage + randomBetween(-0.5, 0.5), 10, 95);
+    state.temperature = clamp(state.temperature + randomBetween(-1.5, 1.5), 30, 80);
   };
 
   const sendAgentStatus = () => {
@@ -149,6 +153,7 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
       id: agentId,
       status,
     });
+    state.agentIndex = (state.agentIndex + 1) % agentSequence.length;
   };
 
   const runStatusUpdate = () => {
@@ -157,7 +162,7 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
       sendEvent("status", apiKey, {
         status: state.status,
         last_connected_at: new Date().toISOString(),
-        agent_id: `${apiKey}-main`,
+        agent_id: mainAgentId,
       });
       runStatusUpdate();
     }, Math.floor(randomBetween(4000, 10000)));
@@ -170,7 +175,6 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
 
   const runAgentStatus = () => {
     const timer = setInterval(() => {
-      state.agentIndex = (state.agentIndex + 1) % agentSequence.length;
       sendAgentStatus();
     }, 5000);
     timers.push(timer);
@@ -180,10 +184,10 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
     const timer = setInterval(() => {
       state.llmIndex = (state.llmIndex + 1) % llmModes.length;
       const profile = llmModes[state.llmIndex];
-      const promptTokens = Math.round(randomBetween(120, 420));
-      const completionTokens = Math.round(randomBetween(80, 360));
+      const promptTokens = Math.round(randomBetween(220, 360));
+      const completionTokens = Math.round(randomBetween(120, 240));
       const totalTokens = promptTokens + completionTokens;
-      const requestsPerMin = Math.round(randomBetween(4, 12));
+      const requestsPerMin = Math.round(randomBetween(4, 8));
       const tokensPerMin = totalTokens * requestsPerMin;
       const costUsd = Number(((totalTokens / 1000) * 0.0025).toFixed(4));
 
@@ -204,14 +208,14 @@ export const startMockFor = (apiKey: string, meta?: Partial<SystemMeta>) => {
   sendEvent("status", apiKey, {
     status: state.status,
     last_connected_at: new Date().toISOString(),
-    agent_id: `${apiKey}-main`,
+    agent_id: mainAgentId,
   });
   sendAgentStatus();
   const initialProfile = llmModes[state.llmIndex];
-  const promptTokens = Math.round(randomBetween(120, 420));
-  const completionTokens = Math.round(randomBetween(80, 360));
+  const promptTokens = Math.round(randomBetween(220, 360));
+  const completionTokens = Math.round(randomBetween(120, 240));
   const totalTokens = promptTokens + completionTokens;
-  const requestsPerMin = Math.round(randomBetween(4, 12));
+  const requestsPerMin = Math.round(randomBetween(4, 8));
   const tokensPerMin = totalTokens * requestsPerMin;
   const costUsd = Number(((totalTokens / 1000) * 0.0025).toFixed(4));
   sendEvent("llm_usage", apiKey, {
