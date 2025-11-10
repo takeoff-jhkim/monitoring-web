@@ -20,7 +20,7 @@ const chartConfig = [
 
 export function SystemDetailPanel({ apiKey }) {
   const snapshot = useMonitoringStore((state) =>
-    apiKey ? selectLatestSnapshot(apiKey)(state) : undefined,
+    apiKey ? selectLatestSnapshot(apiKey)(state) : undefined
   );
   const registerSystems = useMonitoringStore((state) => state.registerSystems);
   const setAgentList = useMonitoringStore((state) => state.setAgentList);
@@ -92,9 +92,9 @@ export function SystemDetailPanel({ apiKey }) {
     Number.isFinite(llmUsage.requestsPerMin)
       ? `${llmUsage.requestsPerMin.toFixed(1)} req/min`
       : typeof llmUsage.tokensPerMin === "number" &&
-          Number.isFinite(llmUsage.tokensPerMin)
-        ? `${llmUsage.tokensPerMin.toFixed(0)} tpm`
-        : "--";
+        Number.isFinite(llmUsage.tokensPerMin)
+      ? `${llmUsage.tokensPerMin.toFixed(0)} tpm`
+      : "--";
 
   useEffect(() => {
     if (!apiKey) return;
@@ -182,8 +182,8 @@ export function SystemDetailPanel({ apiKey }) {
           {heartbeatAge === null
             ? "Heartbeat 수신 대기 중"
             : heartbeatAge === 0
-              ? "방금 heartbeat 수신"
-              : `${heartbeatAge}s 전 heartbeat`}
+            ? "방금 heartbeat 수신"
+            : `${heartbeatAge}s 전 heartbeat`}
         </div>
       </div>
 
@@ -259,17 +259,6 @@ export function SystemDetailPanel({ apiKey }) {
           </div>
           <AgentList agents={agents} />
         </div>
-      </section>
-
-      <section className="chart-grid">
-        {chartConfig.map((chart) => (
-          <MetricChart
-            key={chart.key}
-            title={chart.title}
-            data={metrics[chart.key] || []}
-            color={chart.color}
-          />
-        ))}
       </section>
 
       <section className="bottom-grid">
