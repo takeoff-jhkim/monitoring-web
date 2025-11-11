@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { formatLocalTime } from "../utils/datetime";
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -84,8 +83,6 @@ type SystemCardProps = {
   isSelected?: boolean;
 };
 
-const WINDOW = 30;
-
 export function SystemCard({
   apiKey,
   apiKeyDisplay,
@@ -103,17 +100,6 @@ export function SystemCard({
   onClick,
   isSelected = false,
 }: SystemCardProps) {
-  const bars = useMemo(() => {
-    const trimmed = cpuSeries.slice(-WINDOW);
-    const padded =
-      trimmed.length >= WINDOW
-        ? trimmed
-        : [...Array(WINDOW - trimmed.length).fill(null), ...trimmed];
-    return padded.map((value) =>
-      typeof value === "number" ? Math.max(2, Math.min(100, value)) : 2,
-    );
-  }, [cpuSeries]);
-
   const badgeStatus = (status ?? "init").toLowerCase();
   const healthBadge = healthStatus ?? null;
   const cardClasses = [
@@ -139,6 +125,21 @@ export function SystemCard({
   const healthLabel = healthBadge
     ? HEALTH_LABELS[healthBadge.toUpperCase()] ?? healthBadge
     : null;
+
+  const clampPercent = (value?: number | null) =>
+    typeof value === "number" && !Number.isNaN(value)
+      ? Math.max(0, Math.min(100, value))
+      : null;
+
+  const metricItems: Array<{
+    key: string;
+    label: string;
+    value: number | null | undefined;
+  }> = [
+    { key: "cpu", label: "CPU", value: cpu },
+    { key: "memory", label: "Memory", value: memory },
+    { key: "storage", label: "Storage", value: storage },
+  ];
 
   return (
     <article
@@ -174,30 +175,37 @@ export function SystemCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="sparkbar-inline" aria-label="최근 CPU 30포인트">
-          {bars.map((height, index) => (
-            <div
-              key={index}
-              className="sparkbar-bar"
-              style={{ height: `${height}%`, transition: "height 200ms" }}
-            />
-          ))}
-        </div>
-        <div className="flex-1 text-sm space-y-1">
-          <div className="metric-line">
-            <span>CPU</span>
-            <strong>{formatPercent(cpu)}</strong>
-          </div>
-          <div className="metric-line">
-            <span>Memory</span>
-            <strong>{formatPercent(memory)}</strong>
-          </div>
-          <div className="metric-line">
-            <span>Storage</span>
-            <strong>{formatPercent(storage)}</strong>
-          </div>
-        </div>
+      <div className="metric-bars" aria-label="시스템 자원 사용량">
+        {metricItems.map(({ key, label, value }) => {
+          const normalized = clampPercent(value);
+          return (
+            <div className="metric-bar" key={key}>
+              <div className="metric-bar-header">
+                <span>{label}</span>
+                <strong>{formatPercent(value)}</strong>
+              </div>
+              <div
+                className={`metric-bar-track ${
+                  normalized === null ? "metric-bar-track--empty" : ""
+                }`}
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={normalized ?? undefined}
+                aria-valuetext={
+                  normalized === null ? `${label} 데이터 없음` : undefined
+                }
+              >
+                {normalized !== null && (
+                  <div
+                    className="metric-bar-fill"
+                    style={{ width: `${normalized}%` }}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="text-xs text-slate-500 space-y-1">

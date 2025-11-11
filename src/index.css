@@ -380,30 +380,55 @@ input, textarea, select {
   flex: 1 1 0%;
 }
 
-.sparkbar-inline {
+.metric-bars {
   display: flex;
-  align-items: flex-end;
-  height: 56px;
-  gap: 2px;
-  width: 180px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.sparkbar-bar {
-  width: 4px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.6);
+.metric-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.metric-line {
+.metric-bar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   color: #475569;
+  font-size: 0.875rem;
 }
 
-.metric-line strong {
+.metric-bar-header strong {
   color: #0f172a;
   font-weight: 600;
+}
+
+.metric-bar-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  overflow: hidden;
+}
+
+.metric-bar-track--empty {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.18),
+    rgba(148, 163, 184, 0.18) 10px,
+    rgba(148, 163, 184, 0.32) 10px,
+    rgba(148, 163, 184, 0.32) 20px
+  );
+}
+
+.metric-bar-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #38bdf8, #0ea5e9);
+  border-radius: 999px;
+  transition: width 200ms ease;
 }
 
 .status-chip {
