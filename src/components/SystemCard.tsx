@@ -103,7 +103,8 @@ export function SystemCard({
   const badgeStatus = (status ?? "init").toLowerCase();
   const healthBadge = healthStatus ?? null;
   const cardClasses = [
-    "rounded-2xl shadow p-4 bg-white flex flex-col gap-3 transition-shadow",
+    "rounded-2xl shadow bg-white flex flex-col gap-4 transition-shadow",
+    "px-6 py-5",
     "hover:shadow-lg focus-within:shadow-lg cursor-pointer",
     isSelected ? "ring-2 ring-offset-2 ring-sky-500" : "",
   ]
