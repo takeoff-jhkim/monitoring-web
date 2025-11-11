@@ -1,4 +1,5 @@
 import { formatLocalTime } from "../utils/datetime";
+import "../styles/system-card.css";
 
 export const STATUS_LABELS: Record<string, string> = {
   ready: "Ready",
@@ -103,7 +104,8 @@ export function SystemCard({
   const badgeStatus = (status ?? "init").toLowerCase();
   const healthBadge = healthStatus ?? null;
   const cardClasses = [
-    "rounded-2xl shadow p-4 bg-white flex flex-col gap-3 transition-shadow",
+    "rounded-2xl shadow bg-white flex flex-col gap-4 transition-shadow",
+    "px-6 py-5",
     "hover:shadow-lg focus-within:shadow-lg cursor-pointer",
     isSelected ? "ring-2 ring-offset-2 ring-sky-500" : "",
   ]
@@ -143,7 +145,7 @@ export function SystemCard({
 
   return (
     <article
-      className={cardClasses}
+      className={`system-card ${isSelected ? "is-selected" : ""}`}
       onClick={onClick}
       role="button"
       tabIndex={0}

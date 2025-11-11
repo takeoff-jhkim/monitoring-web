@@ -1,0 +1,191 @@
+/* --- 카드 컨테이너 ------------------------------------------------------- */
+.system-card {
+  /* 바깥 여백: 카드들끼리 안 붙게 */
+  margin: 8px;
+
+  /* 안쪽 여백: 콘텐츠가 가장자리와 안 붙게 */
+  padding: 16px;
+
+  border-radius: 16px;
+  background: #ffffff;
+
+  /* 기본 그림자 + 부드러운 전환 */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 180ms ease, transform 180ms ease;
+  cursor: pointer;
+
+  /* 레이아웃(원래 flex + gap 효과 대체) */
+  display: flex;
+  flex-direction: column;
+  row-gap: 16px; /* gap-4 */
+}
+
+/* hover/focus 시 살짝 강조 */
+.system-card:hover,
+.system-card:focus-within {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* 선택 상태 강조 (isSelected일 때) */
+.system-card.is-selected {
+  outline: 2px solid #0ea5e9; /* sky-500 */
+  outline-offset: 2px;
+}
+
+/* --- 헤더(첫 줄: 타이틀/배지) -------------------------------------------- */
+/* 기존 JSX의 첫 번째 블록이 헤더 역할을 하므로 구조 셀렉터로 스타일링 */
+.system-card > :first-child {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  column-gap: 12px; /* gap-3 */
+}
+
+/* 이름 텍스트(원래 font-semibold / text-slate-900) */
+.system-card > :first-child .font-semibold {
+  font-weight: 600;
+  color: #0f172a; /* slate-900 */
+}
+
+/* --- 상태 칩 -------------------------------------------------------------- */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #0f172a;
+  background: #e2e8f0; /* slate-200 */
+}
+
+/* 상태별 색상 */
+.status-ready {
+  background: #d1fae5;
+  color: #065f46;
+} /* green-100 / green-800 */
+.status-off {
+  background: #fee2e2;
+  color: #991b1b;
+} /* red-100 / red-800 */
+.status-rag {
+  background: #fef3c7;
+  color: #92400e;
+} /* amber-100 / amber-800 */
+.status-init {
+  background: #e5e7eb;
+  color: #374151;
+} /* gray-200 / gray-700 */
+
+/* --- 메트릭 바 목록 -------------------------------------------------------- */
+.metric-bars {
+  display: flex;
+  flex-direction: column;
+  row-gap: 12px; /* space-y-3 */
+}
+
+/* 개별 메트릭 카드 내부 */
+.metric-bar {
+  display: flex;
+  flex-direction: column;
+  row-gap: 8px;
+}
+
+/* 헤더: 라벨 / 값 */
+.metric-bar-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: #334155; /* slate-700 */
+  font-size: 13px;
+}
+.metric-bar-header strong {
+  color: #0f172a; /* slate-900 */
+  font-weight: 700;
+}
+
+/* 트랙(빈 바탕) */
+.metric-bar-track {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.02));
+  overflow: hidden;
+}
+
+/* 데이터 없음일 때 살짝 스트라이프 스켈레톤 */
+.metric-bar-track.metric-bar-track--empty {
+  background: repeating-linear-gradient(
+    45deg,
+    #e5e7eb,
+    #e5e7eb 6px,
+    #f3f4f6 6px,
+    #f3f4f6 12px
+  );
+}
+
+/* 채워지는 부분 */
+.metric-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0; /* left 고정, width로 채움 */
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7dd3fc, #3b82f6); /* sky-300 → blue-600 */
+  transition: width 200ms ease;
+}
+
+/* 모션 민감 사용자 배려 */
+@media (prefers-reduced-motion: reduce) {
+  .system-card {
+    transition: none;
+  }
+  .metric-bar-fill {
+    transition: none;
+  }
+}
+
+/* --- 바닥 정보(LLM/시간) -------------------------------------------------- */
+.system-card .text-xs {
+  font-size: 12px;
+}
+.system-card .text-slate-500 {
+  color: #64748b;
+} /* slate-500 */
+.system-card .text-slate-600 {
+  color: #475569;
+} /* slate-600 */
+
+/* --- 다크 모드(선택) ------------------------------------------------------ */
+/* 다크 모드를 쓰면 body나 루트에 data-theme="dark" 같은 플래그를 달고 사용 */
+[data-theme="dark"] .system-card {
+  background: #111827; /* gray-900 */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .status-chip {
+  background: #1f2937;
+  color: #e5e7eb;
+}
+[data-theme="dark"] .metric-bar-header {
+  color: #cbd5e1;
+}
+[data-theme="dark"] .metric-bar-header strong {
+  color: #f8fafc;
+}
+[data-theme="dark"] .metric-bar-track {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.02)
+  );
+}
+[data-theme="dark"] .metric-bar-track.metric-bar-track--empty {
+  background: repeating-linear-gradient(
+    45deg,
+    #1f2937,
+    #1f2937 6px,
+    #111827 6px,
+    #111827 12px
+  );
+}
