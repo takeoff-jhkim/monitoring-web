@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 const MAX_HEARTBEATS = 60;
 const MAX_EVENTS = 60;
-const MAX_AGENT_ENTRIES = 8;
+const MAX_AGENT_ENTRIES = Number.POSITIVE_INFINITY;
 
 export type MonitoringEvent<T> = {
   ts: string;
