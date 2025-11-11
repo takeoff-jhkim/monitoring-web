@@ -227,8 +227,8 @@ export default function SystemsList() {
   const emptyState = !loading && (!systemList || systemList.length === 0);
 
   return (
-    <div className="systems-workspace px-4 py-6 lg:px-6 lg:py-8">
-      <div className="mx-auto w-full max-w-7xl space-y-4">
+    <div className="systems-workspace">
+      <div className="systems-workspace__inner space-y-4">
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold text-slate-900">Systems</h1>
           <p className="text-sm text-slate-500">
@@ -244,7 +244,7 @@ export default function SystemsList() {
           </div>
         )}
 
-        <div className="systems-split grid grid-cols-1 lg:grid-cols-[360px,1fr] gap-4 lg:gap-6">
+        <div className="systems-content systems-split grid grid-cols-1 lg:grid-cols-[360px,1fr] gap-4 lg:gap-6">
           <section className="systems-list-pane">
             {loading ? (
               <ListSkeleton />

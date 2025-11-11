@@ -208,6 +208,28 @@ select {
   width: 100%;
 }
 
+.systems-workspace {
+  width: 100%;
+  min-height: 100vh;
+  padding: 32px 24px 48px;
+  display: flex;
+  flex-direction: column;
+}
+
+.systems-workspace__inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+.systems-content {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .max-w-6xl {
   max-width: 72rem;
 }
@@ -505,8 +527,13 @@ select {
 }
 
 @media (min-width: 1024px) {
+  .systems-list-pane,
+  .systems-detail-pane {
+    height: 100%;
+  }
+
   .systems-list {
-    max-height: calc(100vh - 220px);
+    flex: 1;
     overflow-y: auto;
     padding-right: 0.5rem;
   }
