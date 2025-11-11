@@ -158,20 +158,12 @@ export function SystemCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1 text-sm">
-          <p className="font-semibold text-slate-900">
-            system name : "{name ?? "--"}"
-          </p>
-          <p className="text-slate-500">api key : "{displayApiKey}"</p>
+          <p className="font-semibold text-slate-900">{name ?? "--"}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className={`status-chip ${statusClass(badgeStatus)}`}>
             {STATUS_LABELS[badgeStatus] ?? badgeStatus}
           </span>
-          {healthLabel && (
-            <span className={`status-chip ${healthStatusClass(healthBadge)}`}>
-              {healthLabel}
-            </span>
-          )}
         </div>
       </div>
 
@@ -210,23 +202,23 @@ export function SystemCard({
 
       <div className="text-xs text-slate-500 space-y-1">
         <p>
-          <span className="font-medium text-slate-600">LLM</span>: {llm?.mode ?? "--"}
+          <span className="font-medium text-slate-600">LLM</span>:{" "}
+          {llm?.mode ?? "--"}
           {llm?.provider ? ` / ${llm.provider}` : " / --"}
           {llm?.model_name ? ` / ${llm.model_name}` : " / --"}
         </p>
         <p>
-          <span className="font-medium text-slate-600">Last connected</span>: {formatLocalTime(lastConnectedAt)}
+          <span className="font-medium text-slate-600">Last connected</span>:{" "}
+          {formatLocalTime(lastConnectedAt)}
         </p>
         <p>
-          <span className="font-medium text-slate-600">Registered</span>: {formatDisplayDate(registeredAt)}
+          <span className="font-medium text-slate-600">Registered</span>:{" "}
+          {formatDisplayDate(registeredAt)}
         </p>
         <p>
-          <span className="font-medium text-slate-600">Last seen</span>: {formatDisplayDate(lastSeenAt)}
+          <span className="font-medium text-slate-600">Last seen</span>:{" "}
+          {formatDisplayDate(lastSeenAt)}
         </p>
-      </div>
-
-      <div className="flex justify-end">
-        <span className="card-link">자세히 보기 →</span>
       </div>
     </article>
   );

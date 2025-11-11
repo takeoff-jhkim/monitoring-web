@@ -66,7 +66,7 @@ export default function SystemsList() {
   const selectedApiKey = useMonitoringStore(selectSelectedApiKey);
   const setSystemList = useMonitoringStore((state) => state.setSystemList);
   const setSelectedApiKey = useMonitoringStore(
-    (state) => state.setSelectedApiKey,
+    (state) => state.setSelectedApiKey
   );
   const systemsByKey = useMonitoringStore((state) => state.byApi);
   const monitoredKeysRef = useRef<string[]>([]);
@@ -83,7 +83,7 @@ export default function SystemsList() {
         setIsMock(result.isMock);
         if (result.isMock && result.error) {
           setErrorMessage(
-            "시스템 목록을 불러오지 못해 샘플 데이터를 표시합니다.",
+            "시스템 목록을 불러오지 못해 샘플 데이터를 표시합니다."
           );
         } else {
           setErrorMessage(null);
@@ -103,9 +103,12 @@ export default function SystemsList() {
     };
   }, [setSystemList]);
 
-  useEffect(() => () => {
-    monitoringSubscriptions.stopAll();
-  }, []);
+  useEffect(
+    () => () => {
+      monitoringSubscriptions.stopAll();
+    },
+    []
+  );
 
   const queryApiKey = searchParams.get("apiKey");
 
@@ -229,8 +232,8 @@ export default function SystemsList() {
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold text-slate-900">Systems</h1>
           <p className="text-sm text-slate-500">
-            Redis 채널 기반 실시간 heartbeat, status, agent activity, LLM usage를
-            모니터링합니다.
+            Redis 채널 기반 실시간 heartbeat, status, agent activity, LLM
+            usage를 모니터링합니다.
           </p>
         </header>
 
@@ -280,7 +283,9 @@ export default function SystemsList() {
               <SystemDetailPanel apiKey={selectedApiKey} />
             ) : (
               <div className="card system-detail-empty">
-                <p>좌측에서 시스템을 선택하면 상세 상태를 확인할 수 있습니다.</p>
+                <p>
+                  좌측에서 시스템을 선택하면 상세 상태를 확인할 수 있습니다.
+                </p>
               </div>
             )}
           </section>
