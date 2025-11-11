@@ -1,10 +1,10 @@
 /* --- 카드 컨테이너 ------------------------------------------------------- */
 .system-card {
   /* 바깥 여백: 카드들끼리 안 붙게 */
-  margin: 8px;
+  margin: 6px;
 
   /* 안쪽 여백: 콘텐츠가 가장자리와 안 붙게 */
-  padding: 16px;
+  padding: 14px;
 
   border-radius: 16px;
   background: #ffffff;
@@ -17,7 +17,7 @@
   /* 레이아웃(원래 flex + gap 효과 대체) */
   display: flex;
   flex-direction: column;
-  row-gap: 16px; /* gap-4 */
+  row-gap: 10px; /* gap 조정 */
 }
 
 /* hover/focus 시 살짝 강조 */
@@ -38,7 +38,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  column-gap: 12px; /* gap-3 */
+  column-gap: 8px; /* gap-2 */
 }
 
 /* 이름 텍스트(원래 font-semibold / text-slate-900) */
@@ -82,14 +82,14 @@
 .metric-bars {
   display: flex;
   flex-direction: column;
-  row-gap: 12px; /* space-y-3 */
+  row-gap: 8px; /* space-y-2 */
 }
 
 /* 개별 메트릭 카드 내부 */
 .metric-bar {
   display: flex;
   flex-direction: column;
-  row-gap: 8px;
+  row-gap: 4px;
 }
 
 /* 헤더: 라벨 / 값 */
@@ -98,7 +98,7 @@
   align-items: baseline;
   justify-content: space-between;
   color: #334155; /* slate-700 */
-  font-size: 13px;
+  font-size: 12.5px;
 }
 .metric-bar-header strong {
   color: #0f172a; /* slate-900 */
@@ -109,7 +109,7 @@
 .metric-bar-track {
   position: relative;
   width: 100%;
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.06), rgba(0, 0, 0, 0.02));
   overflow: hidden;
