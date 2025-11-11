@@ -979,6 +979,11 @@ input, textarea, select {
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
+.system-card--selected {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.35);
+}
+
 .system-card:focus-visible {
   outline: 2px solid #6366f1;
   outline-offset: 2px;
