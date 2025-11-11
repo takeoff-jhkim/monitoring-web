@@ -260,10 +260,6 @@ export function SystemDetailPanel({ apiKey }) {
           <AgentList agents={agents} />
         </div>
       </section>
-
-      <section className="bottom-grid">
-        <EventLog events={events} />
-      </section>
     </div>
   );
 }
