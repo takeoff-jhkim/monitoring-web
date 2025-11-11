@@ -1,4 +1,5 @@
 import { formatLocalTime } from "../utils/datetime";
+import "../styles/system-card.css";
 
 export const STATUS_LABELS: Record<string, string> = {
   ready: "Ready",
@@ -144,7 +145,7 @@ export function SystemCard({
 
   return (
     <article
-      className={cardClasses}
+      className={`system-card ${isSelected ? "is-selected" : ""}`}
       onClick={onClick}
       role="button"
       tabIndex={0}
